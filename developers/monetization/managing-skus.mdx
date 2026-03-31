@@ -1,0 +1,222 @@
+---
+title: Managing SKUs
+description: Learn how to create and manage SKUs that represent your app's premium offerings.
+---
+
+The premium items and subscriptions you offer in your app are represented by SKUs. **SKU** stands for Stock Keeping Unit — a unique identifier for each premium offering.
+
+SKUs are the building blocks of your monetization strategy and are managed in the Developer Portal.
+
+---
+
+## Creating a SKU
+
+To create a new SKU:
+
+1. Go to your [app's settings](https://discord.com/developers/applications) in the Developer Portal.
+2. Select the **Monetization → Manage SKUs** tab.
+3. Click **Create SKU**.
+
+When you click **Create SKU**, you can choose from the following types:
+
+| Type | Description |
+|---|---|
+| **User Subscription** | An auto-recurring subscription that grants benefits to one user across all servers |
+| **Guild Subscription** | An auto-recurring subscription that grants benefits to all users in one server |
+| **Consumable** | A one-time purchase that provides a temporary benefit, consumed upon use |
+| **Durable** | A one-time purchase that grants a permanent addition or enhancement |
+
+After selecting a type, enter a name for your SKU to continue.
+
+### Creating subscription tiers
+
+You can create multiple subscription tiers to offer different benefits at different price points. Each tier has its own set of benefits and price, and is represented by a unique SKU.
+
+To support upgrading and downgrading between tiers, see [Supporting upgrades and downgrades](/developers/monetization/implementing-app-subscriptions#supporting-upgrades-and-downgrades).
+
+### SKU limitations
+
+<Warning>
+Keep these limits in mind when designing your premium offerings.
+</Warning>
+
+- You can create up to **50 total SKUs** per app.
+- You can offer either user subscription SKUs or guild subscription SKUs, but **not both simultaneously**.
+- SKU prices must be selected from the list of available prices.
+
+<Info>
+If you need more than 50 SKUs, consider creating a consumable in-app currency SKU that users can spend on items tracked within your app.
+</Info>
+
+---
+
+## Customizing your SKUs
+
+Once you've created a SKU, you can customize it to match your app's branding and the benefits you want to offer:
+
+- **Name**: Max 80 characters.
+- **Description**: Max 160 characters.
+- **Image**: A visual associated with the SKU.
+- **Price**: Selected from the list of available predefined prices.
+
+Your benefits list appears on your app's Store page, in the App Directory, and during purchase and cancellation flows. Each SKU can have:
+
+- Up to **6 benefits**
+- An **emoji** (standard Unicode or custom server emoji)
+- A **benefit name** (max 80 characters)
+- A **benefit description** (max 160 characters)
+
+### Pricing your SKUs
+
+SKU prices are selected from a predefined list and are automatically converted to the user's local currency based on their locale.
+
+Subscription SKUs are charged monthly unless canceled. Changing the price of a subscription SKU only affects **new subscribers** — existing subscribers continue to be charged at the price they originally subscribed at.
+
+<AccordionGroup>
+  <Accordion title="Using a Unicode emoji" icon="face-smile">
+    Enter the emoji directly in the **Unicode Emoji or Custom Emoji Name** field.
+
+    <Tip>
+    Use your OS emoji keyboard to pick an icon:
+
+    - **macOS**: `Control + Command + Space`
+    - **Windows**: `Windows + .`
+    </Tip>
+  </Accordion>
+
+  <Accordion title="Using a custom emoji" icon="image">
+    Set values for both fields:
+
+    - **Name** of your custom emoji
+    - **ID** of the custom emoji
+
+    <Tip>
+    Find the emoji ID in Discord by escaping it in a message with a backslash. For example, `\:uwu:` renders the name and ID.
+    </Tip>
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Publishing and unpublishing SKUs
+
+When you first create a SKU, it is in an `Unavailable` state and cannot be purchased. You can edit, add pricing, and configure benefits before publishing.
+
+From the **Monetization → Manage SKUs** tab, you have three options:
+
+### Publish a SKU
+
+When publishing, you choose one of two visibility options:
+
+- **Available via the Store and API**: The SKU is visible in your app's store and available for purchase.
+- **Available via the API only**: The SKU can only be granted via API calls or the Embedded App SDK — it does not appear in your store.
+
+### Unpublish a SKU
+
+<Warning>
+Unpublishing a SKU affects your users' existing subscriptions and entitlements.
+</Warning>
+
+Unpublishing removes a SKU from the Store and API, making it unavailable for new purchases. Effects:
+
+- For **subscription SKUs**: Subscriptions will not renew at the end of the billing period. Users retain access until the billing period ends.
+- For **consumable and durable SKUs**: Users who already purchased the SKU retain their entitlement.
+- The SKU is not deleted.
+
+### Delete a SKU
+
+<Warning>
+Deleting a SKU immediately affects active subscriptions.
+</Warning>
+
+Deleting a SKU removes it from the UI and makes it unavailable for publishing. Deleted SKUs still appear when calling [List SKUs](/developers/resources/sku#list-skus) via the API. Effects:
+
+- For **subscription SKUs**: Users and guilds are immediately unsubscribed. Their entitlement remains valid until the end of the current billing period.
+- For **consumable and durable SKUs**: Users who purchased before deletion retain their entitlement.
+
+---
+
+## Editing a published SKU
+
+To change a published SKU, first unpublish it. While unpublished, the SKU is no longer available for sale and existing subscribers will not renew. You must continue to honor the premium offering for users until their subscription period ends.
+
+### Changing a subscription SKU price
+
+Changing the price of a user or guild subscription SKU only affects **new subscribers**. Existing subscribers continue to be charged the price at the time they subscribed.
+
+---
+
+## Integrating SKUs in your app
+
+After publishing your SKUs, implement your premium features. See the guides below to get started.
+
+<CardGroup cols={2}>
+  <Card title="Implementing app subscriptions" icon="rotate" href="/developers/monetization/implementing-app-subscriptions">
+    Learn how to start and manage recurring subscriptions within your app.
+  </Card>
+</CardGroup>
+
+---
+
+## Viewing your store page
+
+Users can access your app's Store page from the bot user's profile in a server. From the Store page, users can:
+
+- View available subscriptions and one-time purchases
+- Browse benefits and details for each subscription tier
+- Complete a purchase directly
+
+<Info>
+Only SKUs published to the Store are visible to users on the Store page.
+</Info>
+
+---
+
+## Linking to a specific SKU
+
+Link directly to a specific SKU using the Application Directory Store URL scheme:
+
+```
+https://discord.com/application-directory/:appID/store/:skuID
+```
+
+- **In chat**: Renders as a rich embed that opens a modal to view the SKU details or launch checkout.
+- **As a direct URL in a browser**: Takes the user to the product page in the Application Directory.
+
+---
+
+## Linking to your store
+
+Link directly to your Store page using the Application Directory Store URL scheme:
+
+```
+https://discord.com/application-directory/:appID/store
+```
+
+- **In chat**: Renders as a rich embed that opens a modal to your Store page.
+- **As a direct URL in a browser**: Takes the user to your Store page in the Application Directory.
+
+---
+
+## Responding with a premium button
+
+Prompt users to purchase a SKU using a [button](/developers/components/reference#button) with the [premium style](/developers/components/reference#button-button-styles) and a `sku_id`. You can use this button anywhere you would use message components, such as in a command response.
+
+```javascript
+return new JsonResponse({
+  type: 4, // InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE
+  data: {
+    content: "This command requires Nelly Premium! Upgrade now to get access to these features!",
+    components: [{
+      type: MessageComponentTypes.ACTION_ROW,
+      components: [
+        {
+          type: MessageComponentTypes.BUTTON,
+          style: 6, // ButtonStyleTypes.PREMIUM
+          sku_id: '1234965026943668316',
+        },
+      ],
+    }]
+  },
+});
+```

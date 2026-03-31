@@ -1,0 +1,289 @@
+---
+title: Creating a unified friends list
+description: Build a unified friends list that combines Discord relationships with your application.
+---
+
+## Overview
+
+A unified friends list combines both Discord and game-specific relationships in one view. This guide will show you how to:
+
+- Fetch all relationship data
+- Filter and organize relationships
+- Display online status
+- Handle different relationship types
+
+### Prerequisites
+
+Before you begin, make sure you have:
+
+- Set up the Discord Social SDK using the [Getting Started guide](/developers/discord-social-sdk/getting-started)
+- Authenticated your users using [Account Linking](/developers/discord-social-sdk/development-guides/account-linking-with-discord)
+
+<Info>
+The presence features used in a unified friends list require at minimum the `openid sdk.social_layer_presence` scopes. Use `Client::GetDefaultPresenceScopes` in your authorization flow.
+</Info>
+
+---
+
+## Key concepts
+
+The Discord friends list is constructed from two entities: **Relationships** and **Users**.
+
+### Relationships
+
+Relationships are how Discord models friends, friend requests, blocks, and more. All relationships for the current user are loaded when the client connects. Each relationship has a target user ID and a type:
+
+| Relationship type | Description |
+|-------------------|-------------|
+| `Friend` | Confirmed friendship |
+| `PendingOutgoing` | Sent friend request, waiting for acceptance |
+| `PendingIncoming` | Received friend request, waiting for your response |
+| `Blocked` | Blocked user |
+
+Each relationship also has both a `DiscordRelationshipType` (from Discord) and a `GameRelationshipType` (from your game).
+
+### Users
+
+The `UserHandle` object contains information about a Discord user — their username, display name, avatar, online status, and current activity.
+
+<Info>
+`UserHandle` objects maintain references to both the underlying data and the SDK instance. When their data changes, existing handle objects automatically reflect the changes without needing to be recreated.
+</Info>
+
+### User status and rich presence
+
+The SDK provides two types of status:
+
+- **Online status** — Online, Offline, Idle, DoNotDisturb
+- **Rich presence (game activity)** — Activities associated with the current game only. You cannot see activities from other games, even if visible in the Discord client.
+
+---
+
+## Approach 1: SDK unified friends list helper functions (recommended)
+
+<Info>
+This approach is recommended. It significantly reduces code and ensures your friends list follows Discord's recommended grouping and sort order.
+</Info>
+
+The SDK automatically organizes friends into three groups defined by `RelationshipGroupType`:
+
+| Group | Description |
+|-------|-------------|
+| `OnlinePlayingGame` | Friends who are online and currently playing your game |
+| `OnlineElsewhere` | Friends who are online but not playing your game |
+| `Offline` | Friends who are offline |
+
+Within each group, the SDK automatically sorts users (for example, users who have played your game recently are moved to the top of `OnlineElsewhere`).
+
+### Step 1: Display the unified friends list
+
+Use `Client::GetRelationshipsByGroup` to retrieve the pre-sorted list for each group:
+
+```cpp
+void DisplayUnifiedFriendsList(const std::shared_ptr<discordpp::Client>& client) {
+    const auto onlineInGame = client->GetRelationshipsByGroup(
+        discordpp::RelationshipGroupType::OnlinePlayingGame
+    );
+    const auto onlineElsewhere = client->GetRelationshipsByGroup(
+        discordpp::RelationshipGroupType::OnlineElsewhere
+    );
+    const auto offline = client->GetRelationshipsByGroup(
+        discordpp::RelationshipGroupType::Offline
+    );
+
+    std::cout << "\n=== Online - GameTitle (" << onlineInGame.size() << ") ===\n";
+    for (const auto& relationship : onlineInGame) {
+        auto user = relationship.User();
+        if (user) {
+            std::string displayStr = user->DisplayName();
+
+            if (relationship.DiscordRelationshipType() == discordpp::RelationshipType::Friend) {
+                displayStr += " [Discord]";
+            }
+            if (relationship.GameRelationshipType() == discordpp::RelationshipType::Friend) {
+                displayStr += " [Game]";
+            }
+
+            std::cout << displayStr << "\n";
+        }
+    }
+
+    std::cout << "\n=== Online - Elsewhere (" << onlineElsewhere.size() << ") ===\n";
+    for (const auto& relationship : onlineElsewhere) {
+        auto user = relationship.User();
+        if (user) {
+            std::cout << user->DisplayName() << "\n";
+        }
+    }
+
+    std::cout << "\n=== Offline (" << offline.size() << ") ===\n";
+    for (const auto& relationship : offline) {
+        auto user = relationship.User();
+        if (user) {
+            std::cout << user->DisplayName() << "\n";
+        }
+    }
+}
+```
+
+### Step 2: Set up automatic updates
+
+Use `Client::SetRelationshipGroupsUpdatedCallback` to keep your friends list current. This callback fires whenever a friend goes online or offline, starts playing your game, or when a relationship changes (friend request accepted, user blocked, etc.).
+
+```cpp
+client->SetRelationshipGroupsUpdatedCallback([&client](const uint64_t userId) {
+    std::cout << "Friends list updated for user: " << userId << std::endl;
+    DisplayUnifiedFriendsList(client);
+});
+```
+
+---
+
+## Approach 2: Manually fetching relationships and users
+
+This approach gives you more control over filtering and display logic.
+
+### Step 1: Fetch relationships
+
+Use `Client::GetRelationships` to retrieve all relationships:
+
+```cpp
+void DisplayFriendsList(std::shared_ptr<discordpp::Client> client) {
+    std::vector<std::string> inGame;
+    std::vector<std::string> online;
+    std::vector<std::string> offline;
+
+    for (auto& relationship : client->GetRelationships()) {
+        auto user = relationship.User();
+        if (!user) {
+            continue;
+        }
+
+        // Filter to confirmed friends only
+        // Display pending requests and blocks in a separate management view
+        if (relationship.DiscordRelationshipType() != discordpp::RelationshipType::Friend) {
+            continue;
+        }
+
+        std::string str = user->DisplayName();
+
+        // Indicate Discord friend (use the Discord logo in your actual UI)
+        if (relationship.DiscordRelationshipType() == discordpp::RelationshipType::Friend) {
+            str += " [Discord]";
+        }
+
+        // Indicate game friend
+        if (relationship.GameRelationshipType() == discordpp::RelationshipType::Friend) {
+            str += " [Game]";
+        }
+
+        // Mark provisional accounts
+        if (user->IsProvisional()) {
+            str += " (Provisional)";
+        }
+
+        // Categorize based on status
+        if (user->GameActivity()) {
+            inGame.push_back(str);
+        } else if (user->Status() != discordpp::StatusType::Offline) {
+            online.push_back(str);
+        } else {
+            offline.push_back(str);
+        }
+    }
+
+    // Sort each category alphabetically
+    std::sort(inGame.begin(), inGame.end());
+    std::sort(online.begin(), online.end());
+    std::sort(offline.begin(), offline.end());
+
+    std::cout << "\n=== Online - GameTitle (" << inGame.size() << ") ===\n";
+    for (const auto& str : inGame) {
+        std::cout << str << "\n";
+    }
+
+    std::cout << "\n=== Online - Elsewhere (" << online.size() << ") ===\n";
+    for (const auto& str : online) {
+        std::cout << str << "\n";
+    }
+
+    std::cout << "\n=== Offline (" << offline.size() << ") ===\n";
+    for (const auto& str : offline) {
+        std::cout << str << "\n";
+    }
+}
+```
+
+<Info>
+This example rebuilds the list from scratch on each call. In a production game, maintain a cached collection of `UserHandle` objects and update it incrementally.
+</Info>
+
+Call `DisplayFriendsList` when the client is ready:
+
+```cpp
+client->SetStatusChangedCallback([client](discordpp::Client::Status status,
+    discordpp::Client::Error error, int32_t errorDetail) {
+    if (status == discordpp::Client::Status::Ready) {
+        DisplayFriendsList(client);
+    }
+});
+```
+
+### Step 2: Monitor user status changes
+
+Use `Client::SetUserUpdatedCallback` to refresh the list when a user's presence or info changes:
+
+```cpp
+client->SetUserUpdatedCallback([&client](uint64_t userId) {
+    std::cout << "User updated: " << userId << std::endl;
+    DisplayFriendsList(*client);
+});
+```
+
+### Step 3: Monitor relationship changes
+
+Set up callbacks for when relationships are created or deleted:
+
+```cpp
+// Fires when a friend request is sent/accepted, or a user is blocked
+client->SetRelationshipCreatedCallback([&client](uint64_t userId,
+    bool isDiscordRelationshipUpdate) {
+    std::optional<discordpp::UserHandle> user = client->GetUser(userId);
+    if (user) {
+        std::cout << "Relationship created: " << user->DisplayName() << std::endl;
+        DisplayFriendsList(*client);
+    }
+});
+
+// Fires when a friend request is rejected or a friend is removed
+client->SetRelationshipDeletedCallback([&client](uint64_t userId,
+    bool isDiscordRelationshipUpdate) {
+    std::cout << "Relationship deleted: " << userId << std::endl;
+    DisplayFriendsList(*client);
+});
+```
+
+---
+
+## Next steps
+
+<CardGroup cols={3}>
+  <Card title="Managing relationships" href="/developers/discord-social-sdk/development-guides/creating-a-unified-friends-list">
+    Allow players to manage friends, friend requests, and blocked users.
+  </Card>
+  <Card title="Setting rich presence" href="/developers/discord-social-sdk/development-guides/setting-rich-presence">
+    Display game status and activity information to Discord friends.
+  </Card>
+  <Card title="Managing lobbies" href="/developers/discord-social-sdk/development-guides/managing-lobbies">
+    Bring players together in a shared lobby with text chat and voice communication.
+  </Card>
+</CardGroup>
+
+---
+
+## Change log
+
+| Date | Changes |
+|------|---------|
+| July 17, 2025 | Add SDK helper methods for unified friends list |
+| March 17, 2025 | Initial release |

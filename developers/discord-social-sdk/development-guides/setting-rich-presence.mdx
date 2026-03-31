@@ -1,0 +1,242 @@
+---
+title: Setting rich presence
+description: Update Discord Rich Presence from your application to display activity information.
+---
+
+## Overview
+
+Rich Presence allows you to display detailed information about what players are doing in your game. Users can see this information in their Discord profile and friends list and use it to join their friends' games with Game Invites.
+
+### Prerequisites
+
+Before you begin, make sure you have:
+
+- [Set up the Discord Social SDK](/developers/discord-social-sdk/getting-started)
+- Connected to Discord with a valid client instance
+
+<Info>
+Rich presence requires at minimum the `openid sdk.social_layer_presence` scopes. Use `Client::GetDefaultPresenceScopes` in your authorization flow.
+</Info>
+
+---
+
+## Understanding rich presence
+
+Rich Presence, known as "Activity" in the SDK and gateway events, represents the current activity of a user. It is not the same as [Discord Activities](/developers/activities/overview), which are embedded games.
+
+<Info>
+While several `ActivityTypes` are supported, games should use `ActivityTypes::Playing`. The SDK automatically associates the activity with your game, so the `name` field always shows your game's name.
+</Info>
+
+Each `Activity` object contains:
+
+| Field | Description | Purpose |
+|-------|-------------|---------|
+| `type` | Activity type | What the player is doing (e.g., "Playing") |
+| `details` | What the player is doing | Main description line (e.g., "Playing Capture the Flag") |
+| `state` | Their current status | Secondary status line (e.g., "In a group") |
+| `party` | Party information | Shows party size and capacity (e.g., "2 of 4") |
+| `timestamps` | Activity duration | Shows elapsed or remaining time |
+| `assets` | Custom artwork | Game/map thumbnails and character icons |
+| `secrets` | Join/spectate tokens | Enables game invite functionality |
+| `supportedPlatforms` | Platform flags | Controls where join buttons appear |
+
+### Layout of rich presence in Discord
+
+```
+Playing "Your Game Name"         <- Line 1: Game name (automatic)
+Capture the Flag | 2 - 1         <- Line 2: details field
+In a group (2 of 3)              <- Line 3: state + party info
+```
+
+- **Line 1** is powered by your Discord application's name.
+- **Line 2** (`details`) describes what the player is doing. You can include dynamic data like a match score.
+- **Line 3** combines the `state` field ("In a group") and the `party` field ("(2 of 3)").
+
+<Info>
+For tips on designing Rich Presence, see the [Rich Presence best practices guide](/developers/platform/rich-presence).
+</Info>
+
+---
+
+## Setting details and state
+
+```cpp
+discordpp::Activity activity;
+activity.SetType(discordpp::ActivityTypes::Playing);
+activity.SetDetails("Battle Creek");
+activity.SetState("In Competitive Match");
+
+client->UpdateRichPresence(activity, [](discordpp::ClientResult result) {
+    if (result.Successful()) {
+        std::cout << "Rich presence updated!\n";
+    }
+});
+```
+
+---
+
+## Setting timestamps
+
+Show how long the player has been in their current activity or how long until the match ends:
+
+```cpp
+discordpp::ActivityTimestamps timestamps;
+timestamps.SetStart(time(nullptr));         // Elapsed time from now
+// timestamps.SetEnd(time(nullptr) + 3600); // Countdown to end
+activity.SetTimestamps(timestamps);
+```
+
+---
+
+## Uploading and setting assets
+
+Upload custom art assets for your app in the [Rich Presence settings](https://discord.com/developers/applications/select/rich-presence/assets) in the Developer Portal. Assets should be 1024x1024. Up to 300 custom assets can be added.
+
+<Info>
+Asset keys are automatically lowercased when saved. Keep this in mind when referencing them in code.
+</Info>
+
+Reference uploaded assets by key:
+
+```cpp
+discordpp::ActivityAssets assets;
+assets.SetLargeImage("map-mainframe");       // Large image key
+assets.SetLargeText("Mainframe");            // Tooltip on hover
+assets.SetSmallImage("tank-avatar");         // Small image key
+assets.SetSmallText("Tank");                 // Tooltip on hover
+assets.SetInviteCoverImage("invite-cover-image"); // Used for game invites
+activity.SetAssets(assets);
+```
+
+If you need more than 300 assets or want to use externally hosted images, you can [specify an external URL](/developers/events/gateway-events#activity-object-activity-asset-image) instead of an asset key.
+
+---
+
+## Setting clickable URLs
+
+Make the `details`, `state`, and asset image fields into clickable links:
+
+```cpp
+activity.SetState("Playing on Mainframe");
+activity.SetStateUrl("https://example.com/maps/mainframe");
+activity.SetDetails("Rank #1337 in global leaderboard");
+activity.SetDetailsUrl("https://example.com/leaderboard/global");
+
+discordpp::ActivityAssets assets;
+assets.SetLargeImage("map-mainframe");
+assets.SetLargeText("Mainframe");
+assets.SetLargeUrl("https://example.com/maps/mainframe");
+assets.SetSmallImage("tank-avatar");
+assets.SetSmallText("Tank");
+assets.SetSmallUrl("https://example.com/classes/tank");
+
+activity.SetAssets(assets);
+```
+
+---
+
+## Configuring status text
+
+By default, rich presence displays your game's name in the user's status text. Override this:
+
+```cpp
+// Use the game's name in status text (default)
+activity.SetStatusDisplayType(discordpp::StatusDisplayTypes::Name);
+
+// Use the activity's state field in status text
+activity.SetStatusDisplayType(discordpp::StatusDisplayTypes::State);
+
+// Use the activity's details field in status text
+activity.SetStatusDisplayType(discordpp::StatusDisplayTypes::Details);
+```
+
+---
+
+## Setting party and join secret
+
+Include party details and a join secret to enable Game Invites. See the [Managing Game Invites guide](/developers/discord-social-sdk/development-guides/managing-lobbies
+
+```cpp
+discordpp::ActivityParty party;
+party.SetId("party1234");
+party.SetCurrentSize(1);
+party.SetMaxSize(5);
+activity.SetParty(party);
+
+discordpp::ActivitySecrets secrets;
+secrets.SetJoin("your-join-secret");
+activity.SetSecrets(secrets);
+```
+
+---
+
+## Setting supported platforms
+
+Control where join buttons appear in Discord:
+
+```cpp
+// Show join button on desktop only
+activity.SetSupportedPlatforms(discordpp::ActivityGamePlatforms::Desktop);
+```
+
+See the `ActivityGamePlatforms` enum in the [SDK reference](/developers/discord-social-sdk/social-sdk-reference) for all supported platform values.
+
+---
+
+## Rich presence without authentication
+
+<Warning>
+Rich Presence via RPC (Remote Procedure Call) only works with a running Discord desktop client. It does not support mobile, console, or web clients.
+</Warning>
+
+Unlike most SDK features, rich presence can be set without full OAuth2 authentication. The SDK communicates directly with a running Discord desktop client via RPC.
+
+**Requirements:**
+
+- Discord desktop client must be running on the user's machine
+- Your application must have a valid Application ID
+
+```cpp
+auto client = std::make_shared<discordpp::Client>();
+
+// Set the application ID (no Connect() call needed)
+client->SetApplicationId(APPLICATION_ID);
+
+discordpp::Activity activity;
+activity.SetType(discordpp::ActivityTypes::Playing);
+activity.SetState("In Competitive Match");
+activity.SetDetails("Rank: Diamond II");
+
+client->UpdateRichPresence(activity, [](const discordpp::ClientResult& result) {
+    if (result.Successful()) {
+        std::cout << "Rich Presence updated successfully!\n";
+    } else {
+        std::cerr << "Rich Presence update failed\n";
+    }
+});
+```
+
+---
+
+## Next steps
+
+<CardGroup cols={3}>
+  <Card title="Managing game invites" href="/developers/discord-social-sdk/development-guides/managing-lobbies">
+    Allow players to invite friends to join their game session or party.
+  </Card>
+  <Card title="Managing lobbies" href="/developers/discord-social-sdk/development-guides/managing-lobbies">
+    Bring players together in a shared lobby with invites, text chat, and voice communication.
+  </Card>
+  <Card title="Creating a unified friends list" href="/developers/discord-social-sdk/development-guides/creating-a-unified-friends-list">
+    Build a combined Discord and game friends list.
+  </Card>
+</CardGroup>
+
+---
+
+## Change log
+
+| Date | Changes |
+|------|---------|
+| March 17, 2025 | Initial release |

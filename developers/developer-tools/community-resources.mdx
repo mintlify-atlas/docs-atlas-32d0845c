@@ -1,0 +1,140 @@
+---
+title: Community Resources
+description: Discover community-built libraries, tools, and resources for Discord development.
+---
+
+Our community members create amazing tools and resources that help developers build and maintain their apps. From permissions calculators and embed visualizers to comprehensive API libraries, there is a wealth of community-built tooling to make your development process smoother.
+
+---
+
+## Discord Developers Server
+
+The [Official Discord Developers server](https://discord.gg/discord-developers) is a developer-run, community-driven support hub. If you need help building on Discord, want official platform updates, or want to connect with other developers, this is the place to be.
+
+---
+
+## Libraries
+
+Discord does not maintain official API SDKs. The following is a non-exhaustive list of community-maintained libraries that have valid rate limit implementations, are actively maintained, and have large communities.
+
+| Name | Language |
+|------|----------|
+| [Concord](https://github.com/Cogmasters/concord) | C |
+| [Discord.Net](https://github.com/discord-net/Discord.Net) | C# |
+| [DSharpPlus](https://github.com/DSharpPlus/DSharpPlus) | C# |
+| [D++](https://github.com/brainboxdotcc/DPP) | C++ |
+| [discljord](https://github.com/discljord/discljord) | Clojure |
+| [DiscordGo](https://github.com/bwmarrin/discordgo) | Go |
+| [Discord4J](https://github.com/Discord4J/Discord4J) | Java |
+| [JDA](https://github.com/DV8FromTheWorld/JDA) | Java |
+| [discord.js](https://github.com/discordjs/discord.js) | JavaScript |
+| [Eris](https://github.com/abalabahaha/eris) | JavaScript |
+| [Oceanic](https://github.com/OceanicJS/Oceanic) | JavaScript |
+| [Discordia](https://github.com/SinisterRectus/Discordia) | Lua |
+| [DiscordPHP](https://github.com/discord-php/DiscordPHP) | PHP |
+| [discord.py](https://github.com/Rapptz/discord.py) | Python |
+| [disnake](https://github.com/DisnakeDev/disnake) | Python |
+| [hikari](https://github.com/hikari-py/hikari) | Python |
+| [interactions.py](https://github.com/interactions-py/library) | Python |
+| [nextcord](https://github.com/nextcord/nextcord) | Python |
+| [pycord](https://github.com/Pycord-Development/pycord) | Python |
+| [discordrb](https://github.com/shardlab/discordrb) | Ruby |
+| [Serenity](https://github.com/serenity-rs/serenity) | Rust |
+
+---
+
+## Interactions Libraries
+
+[Interactions](/developers/interactions/receiving-and-responding) are the recommended way to build Discord bots. The following open-source libraries help with the security and authentication checks required when receiving interactions via outgoing webhook, and include types for the interactions data models.
+
+<Accordion title="C#" icon="code">
+- [Discord.Net.Rest](https://github.com/discord-net/Discord.Net)
+- [DSharpPlus.Http.AspNetCore](https://github.com/DSharpPlus/DSharpPlus)
+</Accordion>
+
+<Accordion title="Clojure" icon="code">
+- [ring-discord-auth](https://github.com/JohnnyJayJay/ring-discord-auth)
+</Accordion>
+
+<Accordion title="Go" icon="code">
+- [tempest](https://github.com/amatsagu/tempest)
+</Accordion>
+
+<Accordion title="JavaScript" icon="code">
+- [discord-interactions-js](https://github.com/discord/discord-interactions-js)
+- [discord-slash-commands](https://github.com/MeguminSama/discord-slash-commands) and its [Deno fork](https://deno.land/x/discord_slash_commands)
+- [slash-create](https://github.com/Snazzah/slash-create)
+</Accordion>
+
+<Accordion title="Python" icon="code">
+- [discord-interactions-python](https://github.com/discord/discord-interactions-python)
+- [discord-interactions.py](https://github.com/LiBa001/discord-interactions.py)
+- [dispike](https://github.com/ms7m/dispike)
+- [flask-discord-interactions](https://github.com/breqdev/flask-discord-interactions)
+</Accordion>
+
+<Accordion title="PHP" icon="code">
+- [discord-interactions-php](https://github.com/discord/discord-interactions-php)
+</Accordion>
+
+<Accordion title="Tools" icon="code">
+- [caddy-discord-interactions-verifier](https://github.com/CarsonHoffman/caddy-discord-interactions-verifier)
+- [BotForge's Application Commands Builder & Previewer](https://tools.botforge.org/appbuilder)
+- [Bsati's Slash Command Builder](https://bsati.github.io/dc-app-command-builder/)
+</Accordion>
+
+---
+
+## OpenAPI Specification
+
+<Warning>
+The OpenAPI spec is currently in public preview and is subject to breaking changes.
+</Warning>
+
+The public preview of the [Discord HTTP API specification](https://github.com/discord/discord-api-spec) provides a standard [OpenAPI 3.1 spec](https://github.com/OAI/OpenAPI-Specification/blob/main/versions/3.1.0.md) for the HTTP API.
+
+---
+
+## Permission Calculators
+
+[Permissions](/developers/topics/permissions) in Discord can be complex. These tools help you calculate permissions and generate authorization URLs:
+
+- [BotForge's Permissions Calculator](https://tools.botforge.org/permissions)
+- [FiniteReality's Permissions Calculator](https://finitereality.github.io/permissions-calculator/?v=0)
+- [abalabahaha's Permissions Calculator](https://discordapi.com/permissions.html#0)
+
+---
+
+## Intent Calculators
+
+[Gateway Intents](/developers/events/gateway#gateway-intents) determine which events your app receives. These tools help you figure out what to send in your [Identify payload](/developers/events/gateway-events#identify):
+
+- [ziad87's Intent Calculator](https://ziad87.net/intents/)
+- [Larko's Intent Calculator](https://discord-intents-calculator.vercel.app/)
+
+---
+
+## Embed Visualizers
+
+These tools help you preview how embeds will appear in Discord before shipping them:
+
+- [JohnyTheCarrot's Embed Previewer](https://github.com/JohnyTheCarrot/discord-embed-previewer) (Browser Extension)
+
+---
+
+## API Types
+
+If you are working on a project that interacts directly with the Discord API, these modules provide type definitions and completions:
+
+| Name | Language |
+|------|----------|
+| [dasgo](https://github.com/switchupcb/dasgo) | Go |
+| [discord-api-types](https://github.com/discordjs/discord-api-types) | JavaScript |
+
+---
+
+## Game SDK Tools
+
+Discord Game SDK's lobby and networking layer shares similarities with other gaming platforms like Valve's Steamworks SDK. The following open-source library provides a uniform interface for these shared features, useful for developing across multiple platforms (tailored for Unity3D):
+
+- [HouraiNetworking](https://github.com/HouraiTeahouse/HouraiNetworking)

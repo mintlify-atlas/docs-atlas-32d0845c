@@ -1,0 +1,113 @@
+---
+title: Enabling monetization
+description: Step-by-step guide to meet eligibility requirements and enable monetization for your Discord app.
+---
+
+Before you can add monetization to your app, your app and team must meet the eligibility criteria.
+
+## Overview
+
+<Steps>
+  <Step title="Set up your developer team and app">
+    Create a team in the Developer Portal and transfer your verified app to that team.
+  </Step>
+  <Step title="Complete the eligibility checklist">
+    Confirm your app and team meet all requirements before monetization can be enabled.
+  </Step>
+  <Step title="Set up developer team payouts">
+    Connect your team to Stripe so Discord can pay you for purchases.
+  </Step>
+  <Step title="Create your premium offering">
+    Create SKUs in the Developer Portal to represent what users can buy.
+  </Step>
+  <Step title="Implement monetization in your app">
+    Add code to your app that checks entitlements and prompts users to purchase.
+  </Step>
+  <Step title="Start offering your premium features">
+    Link to your store, individual SKUs, or add premium buttons to your app's responses.
+  </Step>
+</Steps>
+
+---
+
+## Step 1: Set up your developer team and app
+
+Before monetization can be enabled, you need:
+
+- A [team](https://discord.com/developers/teams) in the Developer Portal. Create one on the **Teams** page if you don't have one.
+- A [verified app](https://support-dev.discord.com/hc/en-us/articles/23926564536471-How-Do-I-Get-My-App-Verified) that is owned by that team.
+
+---
+
+## Step 2: Complete the eligibility checklist
+
+When a team owner enables monetization, they are taken through a series of checks to confirm all criteria are met.
+
+<Accordion title="Eligibility checklist" icon="list" defaultOpen>
+- App must be verified
+- App belongs to a developer team
+- Team owner must be at least 18 years old
+- Team must have verified emails and 2FA set up
+- App uses slash commands, or has been approved for the privileged `Message Content` intent
+- App has a link to your Terms of Service
+- App has a link to your Privacy Policy that clearly describes what user data you collect and how it is used
+- App must not contain harmful or inappropriate language in its name, description, commands, or role connection metadata
+- Payouts must be set up with a valid payment method
+- Agreement to the [Monetization Terms](https://support.discord.com/hc/articles/5330075836311) and [Discord Developer Policy](https://support-dev.discord.com/hc/en-us/articles/8563934450327-Discord-Developer-Policy)
+</Accordion>
+
+---
+
+## Step 3: Set up team payouts
+
+Discord processes all payouts through Stripe. Only the **owner** of the team can enable payout settings.
+
+<Info>
+Once your app has earned its first $100, it becomes eligible for payout. A review is conducted, and if everything looks good, your team begins receiving payouts.
+</Info>
+
+### If you are based in the United States, European Union, or United Kingdom
+
+1. Go to the [Teams page](https://discord.com/developers/teams) and select your team.
+2. Select **Payout Settings**.
+3. Complete the onboarding flow through Stripe.
+
+<Note>
+If you don't see **Payout Settings**, you are not the owner of the team.
+</Note>
+
+### If you are based outside of the US, EU, or UK
+
+<Info>
+Premium Apps is not currently available outside the United States, European Union, and United Kingdom. These features will be made available to more regions in the future.
+</Info>
+
+For more information, read the [Premium Apps Payouts](https://support-dev.discord.com/hc/articles/17299902720919) Help Center article.
+
+---
+
+## Step 4: Create your premium offering
+
+You are now ready to create SKUs and offer premium features. See the [Managing SKUs](/developers/monetization/managing-skus#creating-a-sku) guide to create one-time purchases and subscriptions for your app.
+
+---
+
+## Step 5: Implement monetization in your app
+
+With your app set up for monetization, add code to support your premium features.
+
+<CardGroup cols={2}>
+  <Card title="Implementing app subscriptions" icon="rotate" href="/developers/monetization/implementing-app-subscriptions">
+    Learn how to start and manage recurring subscriptions within your app.
+  </Card>
+</CardGroup>
+
+---
+
+## Step 6: Start offering your premium features
+
+Your app is set up for monetization. You can now:
+
+- [Link to your store](/developers/monetization/managing-skus#linking-to-your-store) page so users can browse your offerings.
+- [Link to a specific SKU](/developers/monetization/managing-skus#linking-to-a-specific-sku) to direct users to a particular item.
+- [Include a premium button in message components](/developers/monetization/managing-skus#responding-with-a-premium-button) to prompt users to purchase from within your app's responses.

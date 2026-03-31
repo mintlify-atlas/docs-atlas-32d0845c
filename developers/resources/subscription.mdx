@@ -1,0 +1,121 @@
+---
+title: Subscription
+description: Reference for Discord subscription objects that represent recurring payments granting users access to premium offerings.
+---
+
+Subscriptions in Discord represent a user making recurring payments for at least one SKU over an ongoing period. Successful payments grant the user access to entitlements associated with the SKU.
+
+## Subscription object
+
+### Subscription structure
+
+<ResponseField name="id" type="snowflake" required>
+  ID of the subscription. The start of a subscription is determined by its ID.
+</ResponseField>
+
+<ResponseField name="user_id" type="snowflake" required>
+  ID of the user who is subscribed.
+</ResponseField>
+
+<ResponseField name="sku_ids" type="array of snowflakes" required>
+  List of SKUs subscribed to.
+</ResponseField>
+
+<ResponseField name="entitlement_ids" type="array of snowflakes" required>
+  List of entitlements granted for this subscription.
+</ResponseField>
+
+<ResponseField name="renewal_sku_ids" type="?array of snowflakes" required>
+  List of SKUs that this user will be subscribed to at renewal. `null` if the subscription will not renew.
+</ResponseField>
+
+<ResponseField name="current_period_start" type="ISO8601 timestamp" required>
+  Start of the current subscription period.
+</ResponseField>
+
+<ResponseField name="current_period_end" type="ISO8601 timestamp" required>
+  End of the current subscription period. When the subscription renews, its current period is updated.
+</ResponseField>
+
+<ResponseField name="status" type="integer" required>
+  Current [status](#subscription-statuses) of the subscription.
+</ResponseField>
+
+<ResponseField name="canceled_at" type="?ISO8601 timestamp" required>
+  When the subscription was canceled. Set when a user cancels, causing the subscription to enter the `ENDING` status.
+</ResponseField>
+
+<ResponseField name="country" type="string">
+  ISO 3166-1 alpha-2 country code of the payment source used to purchase the subscription. Missing unless queried with a private OAuth scope. Optional field.
+</ResponseField>
+
+### Subscription example
+
+```json
+{
+  "id": "1278078770116427839",
+  "user_id": "1088605110638227537",
+  "sku_ids": ["1158857122189168803"],
+  "entitlement_ids": [],
+  "renewal_sku_ids": null,
+  "current_period_start": "2024-08-27T19:48:44.406602+00:00",
+  "current_period_end": "2024-09-27T19:48:44.406602+00:00",
+  "status": 0,
+  "canceled_at": null
+}
+```
+
+---
+
+## Subscription statuses
+
+| Type     | Value | Description                                     |
+|----------|-------|-------------------------------------------------|
+| ACTIVE   | 0     | Subscription is active and scheduled to renew.  |
+| ENDING   | 1     | Subscription is active but will not renew.      |
+| INACTIVE | 2     | Subscription is inactive and not being charged. |
+
+<Warning>
+Subscription status should not be used to grant perks. Use [entitlements](/developers/resources/entitlement) as the indicator of whether a user should have access to a specific SKU. See the guide on [Implementing App Subscriptions](/developers/monetization/implementing-app-subscriptions) for more information.
+</Warning>
+
+Subscriptions can transition between any of these statuses within the current period. A subscription can be `ACTIVE` outside its current period or `INACTIVE` within its current period. Examples:
+
+- While a failed payment is being retried, the subscription remains `ACTIVE` until it succeeds or the payment is determined to be unrecoverable.
+- A refund or chargeback during the current period makes the subscription `INACTIVE`.
+
+---
+
+## List SKU subscriptions
+
+<Info>
+`GET /skus/{sku.id}/subscriptions`
+</Info>
+
+Returns all subscriptions containing the SKU, filtered by user. Returns a list of [subscription](#subscription-object) objects.
+
+### Query string params
+
+<ParamField query="before" type="snowflake">
+  List subscriptions before this ID.
+</ParamField>
+
+<ParamField query="after" type="snowflake">
+  List subscriptions after this ID.
+</ParamField>
+
+<ParamField query="limit" type="integer" default="50">
+  Number of results to return (1–100).
+</ParamField>
+
+<ParamField query="user_id" type="snowflake">
+  User ID for which to return subscriptions. Required except for OAuth queries.
+</ParamField>
+
+## Get SKU subscription
+
+<Info>
+`GET /skus/{sku.id}/subscriptions/{subscription.id}`
+</Info>
+
+Get a subscription by its ID. Returns a [subscription](#subscription-object) object.

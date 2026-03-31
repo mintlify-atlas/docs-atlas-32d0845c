@@ -1,0 +1,57 @@
+---
+title: Monetizing your Discord app
+description: Learn how to add premium features to your Discord app with subscriptions and purchases.
+---
+
+Add subscriptions and one-time purchases to your app using Discord's built-in checkout and payment flow.
+
+<Info>
+App monetization applies to [Bots](/developers/bots/overview) and [Activities](/developers/activities/overview).
+</Info>
+
+## Components of a premium app
+
+To integrate a premium feature into your app, there are three primary components of the Monetization API:
+
+- **SKUs** represent specific items or subscription options your app offers. Each SKU is a unique offering.
+- **Entitlements** indicate whether a user has access to a specific premium offering or SKU.
+- **Subscriptions** represent an ongoing agreement where a user commits to paying for an entitlement on a recurring basis until canceled.
+
+## Types of SKUs
+
+There are two types of SKUs you can create for your app.
+
+### One-time purchase SKUs
+
+A one-time purchase SKU represents a single item or feature that a user can purchase once. You can offer two types of one-time purchases:
+
+- **Durable items**: Items a user purchases once and keeps forever. For example, a "premium" upgrade that permanently unlocks features in an app.
+- **Consumable items**: Items a user purchases once and uses up. For example, a "boost" item that provides a temporary effect in an app.
+
+### Subscription SKUs
+
+A subscription SKU represents a recurring purchase that a user subscribes to for a set period. You can offer two types of subscriptions:
+
+- **User subscriptions**: A user subscribes to a SKU for themselves. Only the purchasing user is considered entitled to the SKU.
+- **Guild subscriptions**: A user subscribes to a SKU for their guild. All members of that guild are considered entitled to the SKU.
+
+---
+
+## Next steps
+
+Ready to start monetizing your app?
+
+<CardGroup cols={2}>
+  <Card title="Enabling monetization" icon="circle-check" href="/developers/monetization/enabling-monetization">
+    Meet the eligibility requirements and enable monetization for your app.
+  </Card>
+  <Card title="Managing SKUs" icon="tag" href="/developers/monetization/managing-skus">
+    Create and configure the premium offerings your users can purchase.
+  </Card>
+  <Card title="Implementing app subscriptions" icon="rotate" href="/developers/monetization/implementing-app-subscriptions">
+    Add recurring user and guild subscription support to your app.
+  </Card>
+  <Card title="SKU resource" icon="code" href="/developers/resources/sku">
+    Full reference for the SKU object and related API endpoints.
+  </Card>
+</CardGroup>

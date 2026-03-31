@@ -1,24 +1,11 @@
 {
-  "$schema": "https://mintlify.com/docs.json",
-  "name": "Discord Developer Platform",
+  "projectType": "api-service",
+  "projectName": "Discord Developer Platform",
+  "projectDescription": "Official documentation for the Discord Developer Platform, covering the REST API, Gateway events, bots, Activities, Social SDK, and monetization features.",
   "theme": "sequoia",
-  "colors": {
-    "primary": "#5d67f3",
-    "light": "#acb4fc",
-    "dark": "#5d67f3"
-  },
-  "favicon": "/favicon.png",
-  "navbar": {
-    "primary": {
-      "type": "github",
-      "href": "https://github.com/discord/discord-api-docs"
-    }
-  },
-  "footer": {
-    "socials": {
-      "github": "https://github.com/discord/discord-api-docs"
-    }
-  },
+  "primaryColor": "#5d67f3",
+  "lightColor": "#acb4fc",
+  "darkColor": null,
   "navigation": {
     "tabs": [
       {
@@ -27,7 +14,6 @@
           {
             "group": "Introduction",
             "pages": [
-              "index",
               "developers/intro",
               "developers/quick-start/overview-of-apps",
               "developers/quick-start/getting-started"
@@ -139,9 +125,6 @@
               "developers/discord-social-sdk/overview",
               "developers/discord-social-sdk/core-concepts",
               "developers/discord-social-sdk/getting-started",
-              "developers/discord-social-sdk/getting-started/using-c++",
-              "developers/discord-social-sdk/getting-started/using-unity",
-              "developers/discord-social-sdk/getting-started/using-unreal-engine",
               "developers/discord-social-sdk/social-sdk-reference"
             ]
           },
@@ -180,5 +163,31 @@
         ]
       }
     ]
-  }
+  },
+  "keyFeatures": [
+    "REST API with versioning (v6–v10) for full Discord platform access",
+    "Gateway WebSocket API for real-time events and presence",
+    "Application Commands (slash commands, context menus) and interactive Components",
+    "Discord Social SDK for integrating voice, friends, rich presence into games",
+    "Activities — embedded multiplayer games and experiences inside Discord",
+    "OAuth2 and bot token authentication with granular permissions",
+    "Monetization support: subscriptions, one-time purchases, SKUs, entitlements",
+    "Webhook-based event delivery as an alternative to the Gateway",
+    "Rich Presence for displaying game status in Discord profiles",
+    "Auto-moderation, audit logs, and community server management APIs"
+  ],
+  "publicApiSurface": [
+    "GET/POST/PATCH/DELETE /channels/{channel.id}",
+    "GET/POST /channels/{channel.id}/messages",
+    "GET/POST/PATCH/DELETE /guilds/{guild.id}",
+    "GET/PATCH /users/@me",
+    "POST /interactions/{interaction.id}/{interaction.token}/callback",
+    "GET/POST /applications/{application.id}/commands",
+    "GET /gateway/bot",
+    "GET /oauth2/authorize",
+    "GET/POST /applications/{application.id}/entitlements",
+    "GET/POST /guilds/{guild.id}/auto-moderation/rules",
+    "GET/POST /webhooks/{webhook.id}/{webhook.token}",
+    "GET /guilds/{guild.id}/audit-logs"
+  ]
 }

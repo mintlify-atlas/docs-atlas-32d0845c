@@ -1,0 +1,288 @@
+---
+title: Emoji
+description: Reference for Discord emoji objects and management endpoints for guild and application emojis.
+---
+
+<Warning>
+Routes for controlling emojis do not follow the normal rate limit conventions. These routes are specifically limited on a per-guild basis to prevent abuse. This means that the quota returned by our APIs may be inaccurate, and you may encounter 429s.
+</Warning>
+
+## Emoji object
+
+Represents a Discord emoji, which can be a standard Unicode emoji or a custom guild/application emoji.
+
+### Emoji structure
+
+<ResponseField name="id" type="?snowflake">
+  The emoji ID. `null` for standard Unicode emojis.
+</ResponseField>
+
+<ResponseField name="name" type="?string">
+  The emoji name. Can be `null` only in reaction emoji objects when custom emoji data is not available.
+</ResponseField>
+
+<ResponseField name="roles" type="array of snowflakes">
+  Role IDs allowed to use this emoji. Optional field.
+</ResponseField>
+
+<ResponseField name="user" type="user object">
+  The user that created this emoji. Optional field.
+</ResponseField>
+
+<ResponseField name="require_colons" type="boolean">
+  Whether this emoji must be wrapped in colons. Optional field.
+</ResponseField>
+
+<ResponseField name="managed" type="boolean">
+  Whether this emoji is managed. Optional field.
+</ResponseField>
+
+<ResponseField name="animated" type="boolean">
+  Whether this emoji is animated. Optional field.
+</ResponseField>
+
+<ResponseField name="available" type="boolean">
+  Whether this emoji can be used. May be `false` due to loss of Server Boosts. Optional field.
+</ResponseField>
+
+### Emoji example
+
+```json
+{
+  "id": "41771983429993937",
+  "name": "LUL",
+  "roles": ["41771983429993000", "41771983429993111"],
+  "user": {
+    "username": "Luigi",
+    "discriminator": "0002",
+    "id": "96008815106887111",
+    "avatar": "5500909a3274e1812beb4e8de6631111",
+    "public_flags": 131328
+  },
+  "require_colons": true,
+  "managed": false,
+  "animated": false
+}
+```
+
+### Standard emoji example
+
+```json
+{
+  "id": null,
+  "name": "🔥"
+}
+```
+
+### Custom emoji examples
+
+<Info>
+In `MESSAGE_REACTION_ADD`, `MESSAGE_REACTION_REMOVE`, and `MESSAGE_REACTION_REMOVE_EMOJI` gateway events, `animated` will be returned for animated emoji.
+</Info>
+
+<Info>
+In `MESSAGE_REACTION_ADD` and `MESSAGE_REACTION_REMOVE` gateway events, `name` may be `null` when custom emoji data is not available (for example, if it was deleted from the guild).
+</Info>
+
+```json
+{
+  "id": "41771983429993937",
+  "name": "LUL",
+  "animated": true
+}
+```
+
+```json
+{
+  "id": "41771983429993937",
+  "name": null
+}
+```
+
+## Premium emoji
+
+Roles with the `integration_id` tag set to the guild's guild_subscription integration are considered subscription roles. An emoji cannot have both subscription roles and non-subscription roles. Emojis with subscription roles are considered premium emoji and count toward a separate limit of 25. Emojis cannot be converted between normal and premium after creation.
+
+## Application-owned emoji
+
+An application can own up to 2000 emojis that can only be used by that app. App emojis can be managed using the API with a bot token, or using the app's settings in the Developer Portal. The `USE_EXTERNAL_EMOJIS` permission is not required to use app emojis.
+
+The `user` field of an app emoji object represents the team member that uploaded the emoji from the app's settings, or the bot user if uploaded using the API.
+
+## Emoji formats
+
+Emoji can be uploaded as JPEG, PNG, GIF, WebP, and AVIF formats. All emoji (regardless of original format) can be served as WebP.
+
+<Tip>
+Use the `.webp` extension when fetching emoji for maximum performance and compatibility. For animated WebP emoji, use the `.webp` extension with the `?animated=true` query parameter.
+</Tip>
+
+---
+
+## List guild emojis
+
+<Info>
+`GET /guilds/{guild.id}/emojis`
+</Info>
+
+Returns a list of [emoji](/developers/resources/emoji) objects for the given guild. Includes `user` fields if the bot has the `CREATE_GUILD_EXPRESSIONS` or `MANAGE_GUILD_EXPRESSIONS` permission.
+
+## Get guild emoji
+
+<Info>
+`GET /guilds/{guild.id}/emojis/{emoji.id}`
+</Info>
+
+Returns an [emoji](/developers/resources/emoji) object for the given guild and emoji IDs. Includes the `user` field if the bot has the `MANAGE_GUILD_EXPRESSIONS` permission, or if the bot created the emoji and has the `CREATE_GUILD_EXPRESSIONS` permission.
+
+## Create guild emoji
+
+<Info>
+`POST /guilds/{guild.id}/emojis`
+</Info>
+
+Create a new emoji for the guild. Requires the `CREATE_GUILD_EXPRESSIONS` permission. Returns the new [emoji](/developers/resources/emoji) object on success. Fires a `Guild Emojis Update` gateway event.
+
+<Warning>
+Emojis and animated emojis have a maximum file size of 256 KiB. Attempting to upload an emoji larger than this limit will fail and return a `400 Bad Request` error.
+</Warning>
+
+<Info>
+This endpoint supports the `X-Audit-Log-Reason` header.
+</Info>
+
+### JSON params
+
+<ParamField body="name" type="string" required>
+  Name of the emoji.
+</ParamField>
+
+<ParamField body="image" type="image data" required>
+  The 128x128 emoji image, as a [data URI](/developers/reference).
+</ParamField>
+
+<ParamField body="roles" type="array of snowflakes" required>
+  Roles allowed to use this emoji.
+</ParamField>
+
+## Modify guild emoji
+
+<Info>
+`PATCH /guilds/{guild.id}/emojis/{emoji.id}`
+</Info>
+
+Modify the given emoji. For emojis created by the current user, requires either the `CREATE_GUILD_EXPRESSIONS` or `MANAGE_GUILD_EXPRESSIONS` permission. For other emojis, requires the `MANAGE_GUILD_EXPRESSIONS` permission. Returns the updated [emoji](/developers/resources/emoji) object on success. Fires a `Guild Emojis Update` gateway event.
+
+<Note>
+All parameters to this endpoint are optional.
+</Note>
+
+<Info>
+This endpoint supports the `X-Audit-Log-Reason` header.
+</Info>
+
+### JSON params
+
+<ParamField body="name" type="string">
+  Name of the emoji.
+</ParamField>
+
+<ParamField body="roles" type="?array of snowflakes">
+  Roles allowed to use this emoji. Set to `null` to remove all role restrictions.
+</ParamField>
+
+## Delete guild emoji
+
+<Info>
+`DELETE /guilds/{guild.id}/emojis/{emoji.id}`
+</Info>
+
+Delete the given emoji. For emojis created by the current user, requires either the `CREATE_GUILD_EXPRESSIONS` or `MANAGE_GUILD_EXPRESSIONS` permission. For other emojis, requires the `MANAGE_GUILD_EXPRESSIONS` permission. Returns `204 No Content` on success. Fires a `Guild Emojis Update` gateway event.
+
+<Info>
+This endpoint supports the `X-Audit-Log-Reason` header.
+</Info>
+
+---
+
+## List application emojis
+
+<Info>
+`GET /applications/{application.id}/emojis`
+</Info>
+
+Returns an object containing a list of [emoji](/developers/resources/emoji) objects for the given application under the `items` key. Includes a `user` object for the team member that uploaded the emoji from the app's settings, or for the bot user if uploaded using the API.
+
+```json
+{
+  "items": [
+    {
+      "id": "41771983429993937",
+      "name": "LUL",
+      "roles": [],
+      "user": {
+        "username": "Luigi",
+        "discriminator": "0002",
+        "id": "96008815106887111",
+        "avatar": "5500909a3274e1812beb4e8de6631111",
+        "public_flags": 131328
+      },
+      "require_colons": true,
+      "managed": false,
+      "animated": false
+    }
+  ]
+}
+```
+
+## Get application emoji
+
+<Info>
+`GET /applications/{application.id}/emojis/{emoji.id}`
+</Info>
+
+Returns an [emoji](/developers/resources/emoji) object for the given application and emoji IDs. Always includes the `user` field.
+
+## Create application emoji
+
+<Info>
+`POST /applications/{application.id}/emojis`
+</Info>
+
+Create a new emoji for the application. Returns the new [emoji](/developers/resources/emoji) object on success.
+
+<Warning>
+Emojis and animated emojis have a maximum file size of 256 KiB. Attempting to upload an emoji larger than this limit will fail and return a `400 Bad Request` error.
+</Warning>
+
+### JSON params
+
+<ParamField body="name" type="string" required>
+  Name of the emoji.
+</ParamField>
+
+<ParamField body="image" type="image data" required>
+  The 128x128 emoji image, as a [data URI](/developers/reference).
+</ParamField>
+
+## Modify application emoji
+
+<Info>
+`PATCH /applications/{application.id}/emojis/{emoji.id}`
+</Info>
+
+Modify the given emoji. Returns the updated [emoji](/developers/resources/emoji) object on success.
+
+### JSON params
+
+<ParamField body="name" type="string" required>
+  Name of the emoji.
+</ParamField>
+
+## Delete application emoji
+
+<Info>
+`DELETE /applications/{application.id}/emojis/{emoji.id}`
+</Info>
+
+Delete the given emoji. Returns `204 No Content` on success.

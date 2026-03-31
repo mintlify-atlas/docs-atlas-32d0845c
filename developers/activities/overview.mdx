@@ -1,0 +1,64 @@
+---
+title: Activities Overview
+description: Learn about Discord Activities — multiplayer games and social experiences built as web apps and run inside Discord.
+---
+
+Activities are web apps hosted in an iframe that use the [Embedded App SDK](/developers/developer-tools/embedded-app-sdk) to communicate with Discord clients. Whether you're building a multiplayer game, a collaborative tool, or a new social experience, your Activity runs as a web app embedded directly in Discord on desktop, mobile, and web.
+
+<CardGroup cols={3}>
+  <Card title="Build Your First Activity" href="/developers/activities/building-an-activity">
+    Follow the step-by-step guide to build your first Activity using the Embedded App SDK.
+  </Card>
+  <Card title="How Activities Work" href="/developers/activities/how-activities-work">
+    Learn about the lifecycle of Activities and how they run in Discord clients.
+  </Card>
+  <Card title="Development Guides" href="/developers/activities/development-guides/local-development">
+    Explore common development patterns and practices to make building Activities simpler.
+  </Card>
+</CardGroup>
+
+---
+
+## Developing Activities
+
+Your Activity is built as a web app that runs in an iframe inside Discord. You can get started by following the guide on [Building an Activity](/developers/activities/building-an-activity) or by exploring the sample projects below.
+
+### Embedded App SDK
+
+The [Embedded App SDK](/developers/developer-tools/embedded-app-sdk) handles all communication between Discord and your app, making it easier to manage connected users, support mobile clients, and debug your Activity.
+
+The SDK provides two primary mechanisms for integration:
+
+#### Commands
+
+Commands let you interact with the Discord client — authorizing and authenticating users, fetching information about your Activity's channel, and updating rich presence data.
+
+Read the [Embedded App SDK documentation](/developers/developer-tools/embedded-app-sdk#sdk-commands) for a full list of commands and their usage.
+
+#### Events
+
+Events let you subscribe to things happening in the connected client that are relevant to your Activity — initial connection, user updates, participant changes, and more.
+
+Read the [Embedded App SDK documentation](/developers/developer-tools/embedded-app-sdk#sdk-events) for the full list of events.
+
+---
+
+## Sample Projects
+
+Use these sample projects to get started quickly and learn from common development patterns.
+
+<CardGroup cols={3}>
+  <Card title="Discord Activity Starter" href="https://github.com/discord/embedded-app-sdk-examples/tree/main/discord-activity-starter">
+    A TypeScript starter template for getting your own Activity up and running quickly.
+  </Card>
+  <Card title="Embedded App SDK Playground" href="https://github.com/discord/embedded-app-sdk-examples/tree/main/sdk-playground">
+    A reference example implementing all commands and events available in the Embedded App SDK.
+  </Card>
+  <Card title="Nested Framework App" href="https://github.com/discord/embedded-app-sdk-examples/tree/main/nested-messages">
+    A reference example demonstrating an Activity using a nested framework like a game engine.
+  </Card>
+</CardGroup>
+
+<Info>
+You can also find community-maintained examples on [GitHub](https://github.com/discord/embedded-app-sdk-examples?tab=readme-ov-file#community-curated-examples), including more framework-specific samples.
+</Info>

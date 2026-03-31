@@ -1,0 +1,523 @@
+---
+title: User
+description: Reference for Discord user objects and management endpoints.
+---
+
+Users in Discord are generally considered the base entity. Users can spawn across the entire platform, be members of guilds, participate in text and voice chat, and much more. Users are separated by a distinction of "bot" vs "normal." Although they are similar, bot users are automated users that are "owned" by another user. Unlike normal users, bot users do _not_ have a limitation on the number of guilds they can be a part of.
+
+## Usernames and nicknames
+
+Discord enforces the following restrictions for usernames and nicknames:
+
+1. Names can contain most valid unicode characters. We limit some zero-width and non-rendering characters.
+2. Usernames must be between 2 and 32 characters long.
+3. Nicknames must be between 1 and 32 characters long.
+4. Names are sanitized and trimmed of leading, trailing, and excessive internal whitespace.
+
+The following restrictions are additionally enforced for usernames:
+
+1. Usernames cannot contain the following substrings: `@`, `#`, `:`, `` ` ``, `discord`
+2. Usernames cannot be: `everyone`, `here`
+
+<Note>
+There are other rules and restrictions not shared here for the sake of spam and abuse mitigation, but the majority of users won't encounter them. It's important to properly handle all error messages returned by Discord when editing or updating names.
+</Note>
+
+---
+
+## User object
+
+### User structure
+
+<ResponseField name="id" type="snowflake" required>
+  The user's id. Requires the `identify` OAuth2 scope.
+</ResponseField>
+
+<ResponseField name="username" type="string" required>
+  The user's username, not unique across the platform. Requires the `identify` OAuth2 scope.
+</ResponseField>
+
+<ResponseField name="discriminator" type="string" required>
+  The user's Discord-tag. Requires the `identify` OAuth2 scope.
+</ResponseField>
+
+<ResponseField name="global_name" type="?string" required>
+  The user's display name, if it is set. Requires the `identify` OAuth2 scope.
+</ResponseField>
+
+<ResponseField name="avatar" type="?string" required>
+  The user's [avatar hash](/developers/reference#image-formatting). Requires the `identify` OAuth2 scope.
+</ResponseField>
+
+<ResponseField name="bot" type="boolean">
+  Whether the user belongs to an OAuth2 application. Requires the `identify` OAuth2 scope.
+</ResponseField>
+
+<ResponseField name="system" type="boolean">
+  Whether the user is an Official Discord System user (part of the urgent message system). Requires the `identify` OAuth2 scope.
+</ResponseField>
+
+<ResponseField name="mfa_enabled" type="boolean">
+  Whether the user has two factor enabled on their account. Requires the `identify` OAuth2 scope.
+</ResponseField>
+
+<ResponseField name="banner" type="?string">
+  The user's [banner hash](/developers/reference#image-formatting). Requires the `identify` OAuth2 scope.
+</ResponseField>
+
+<ResponseField name="accent_color" type="?integer">
+  The user's banner color encoded as an integer representation of hexadecimal color code. Requires the `identify` OAuth2 scope.
+</ResponseField>
+
+<ResponseField name="locale" type="string">
+  The user's chosen [language option](/developers/reference#locales). Requires the `identify` OAuth2 scope.
+</ResponseField>
+
+<ResponseField name="verified" type="boolean">
+  Whether the email on this account has been verified. Requires the `email` OAuth2 scope.
+</ResponseField>
+
+<ResponseField name="email" type="?string">
+  The user's email. Requires the `email` OAuth2 scope.
+</ResponseField>
+
+<ResponseField name="flags" type="integer">
+  The [flags](#user-flags) on a user's account. Requires the `identify` OAuth2 scope.
+</ResponseField>
+
+<ResponseField name="premium_type" type="integer">
+  The [type of Nitro subscription](#premium-types) on a user's account. Requires the `identify` OAuth2 scope.
+</ResponseField>
+
+<ResponseField name="public_flags" type="integer">
+  The public [flags](#user-flags) on a user's account. Requires the `identify` OAuth2 scope.
+</ResponseField>
+
+<ResponseField name="avatar_decoration_data" type="?avatar decoration data object">
+  Data for the user's avatar decoration. Requires the `identify` OAuth2 scope.
+</ResponseField>
+
+<ResponseField name="collectibles" type="?collectibles object">
+  Data for the user's collectibles. Requires the `identify` OAuth2 scope.
+</ResponseField>
+
+<ResponseField name="primary_guild" type="?user primary guild object">
+  The user's primary guild. Requires the `identify` OAuth2 scope.
+</ResponseField>
+
+### Example user
+
+```json
+{
+  "id": "80351110224678912",
+  "username": "Nelly",
+  "global_name": null,
+  "discriminator": "1337",
+  "avatar": "8342729096ea3675442027381ff50dfe",
+  "verified": true,
+  "email": "nelly@discord.com",
+  "flags": 64,
+  "banner": "06c16474723fe537c283b8efa61a30c8",
+  "accent_color": 16711680,
+  "premium_type": 1,
+  "public_flags": 64,
+  "avatar_decoration_data": {
+    "sku_id": "1144058844004233369",
+    "asset": "a_fed43ab12698df65902ba06727e20c0e"
+  },
+  "collectibles": {
+    "nameplate": {
+      "sku_id": "2247558840304243311",
+      "asset": "nameplates/nameplates/twilight/",
+      "label": "",
+      "palette": "cobalt"
+    }
+  },
+  "primary_guild": {
+    "identity_guild_id": "1234647491267808778",
+    "identity_enabled": true,
+    "tag": "DISC",
+    "badge": "7d1734ae5a615e82bc7a4033b98fade8"
+  }
+}
+```
+
+### User flags
+
+| Value      | Name                       | Description                                                                                                                                            |
+|------------|----------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `1 << 0`   | `STAFF`                    | Discord Employee                                                                                                                                       |
+| `1 << 1`   | `PARTNER`                  | Partnered Server Owner                                                                                                                                 |
+| `1 << 2`   | `HYPESQUAD`                | HypeSquad Events Member                                                                                                                                |
+| `1 << 3`   | `BUG_HUNTER_LEVEL_1`       | Bug Hunter Level 1                                                                                                                                     |
+| `1 << 6`   | `HYPESQUAD_ONLINE_HOUSE_1` | House Bravery Member                                                                                                                                   |
+| `1 << 7`   | `HYPESQUAD_ONLINE_HOUSE_2` | House Brilliance Member                                                                                                                                |
+| `1 << 8`   | `HYPESQUAD_ONLINE_HOUSE_3` | House Balance Member                                                                                                                                   |
+| `1 << 9`   | `PREMIUM_EARLY_SUPPORTER`  | Early Nitro Supporter                                                                                                                                  |
+| `1 << 10`  | `TEAM_PSEUDO_USER`         | User is a [team](/developers/reference)                                                                                                             |
+| `1 << 14`  | `BUG_HUNTER_LEVEL_2`       | Bug Hunter Level 2                                                                                                                                     |
+| `1 << 16`  | `VERIFIED_BOT`             | Verified Bot                                                                                                                                           |
+| `1 << 17`  | `VERIFIED_DEVELOPER`       | Early Verified Bot Developer                                                                                                                           |
+| `1 << 18`  | `CERTIFIED_MODERATOR`      | Moderator Programs Alumni                                                                                                                              |
+| `1 << 19`  | `BOT_HTTP_INTERACTIONS`    | Bot uses only [HTTP interactions](/developers/interactions/receiving-and-responding#receiving-an-interaction) and is shown in the online member list    |
+
+### Premium types
+
+Premium types denote the level of premium a user has. Visit the [Nitro](https://discord.com/nitro) page to learn more about the premium plans currently offered.
+
+| Value | Name            |
+|-------|-----------------|
+| `0`   | None            |
+| `1`   | Nitro Classic   |
+| `2`   | Nitro           |
+| `3`   | Nitro Basic     |
+
+### User primary guild
+
+<ResponseField name="identity_guild_id" type="?snowflake">
+  The id of the user's primary guild.
+</ResponseField>
+
+<ResponseField name="identity_enabled" type="?boolean">
+  Whether the user is displaying the primary guild's server tag. This can be `null` if the system clears the identity (for example, the server no longer supports tags). This will be `false` if the user manually removes their tag.
+</ResponseField>
+
+<ResponseField name="tag" type="?string">
+  The text of the user's server tag. Limited to 4 characters.
+</ResponseField>
+
+<ResponseField name="badge" type="?string">
+  The [server tag badge hash](/developers/reference#image-formatting).
+</ResponseField>
+
+---
+
+## Avatar decoration data object
+
+The data for the user's [avatar decoration](https://support.discord.com/hc/en-us/articles/13410113109911-Avatar-Decorations).
+
+<ResponseField name="asset" type="string" required>
+  The [avatar decoration hash](/developers/reference#image-formatting).
+</ResponseField>
+
+<ResponseField name="sku_id" type="snowflake" required>
+  Id of the avatar decoration's SKU.
+</ResponseField>
+
+---
+
+## Collectibles
+
+The collectibles the user has, excluding Avatar Decorations and Profile Effects.
+
+<ResponseField name="nameplate" type="object">
+  Object mapping of [nameplate data](#nameplate).
+</ResponseField>
+
+### Nameplate
+
+The nameplate the user has.
+
+<ResponseField name="sku_id" type="snowflake" required>
+  Id of the nameplate SKU.
+</ResponseField>
+
+<ResponseField name="asset" type="string" required>
+  Path to the [nameplate asset](/developers/reference#image-formatting).
+</ResponseField>
+
+<ResponseField name="label" type="string" required>
+  The label of this nameplate. Currently unused.
+</ResponseField>
+
+<ResponseField name="palette" type="string" required>
+  Background color of the nameplate. One of: `crimson`, `berry`, `sky`, `teal`, `forest`, `bubble_gum`, `violet`, `cobalt`, `clover`, `lemon`, `white`.
+</ResponseField>
+
+---
+
+## Connection object
+
+The connection object that the user has attached.
+
+<ResponseField name="id" type="string" required>
+  Id of the connection account.
+</ResponseField>
+
+<ResponseField name="name" type="string" required>
+  The username of the connection account.
+</ResponseField>
+
+<ResponseField name="type" type="string" required>
+  The [service](#connection-services) of this connection.
+</ResponseField>
+
+<ResponseField name="revoked" type="boolean">
+  Whether the connection is revoked.
+</ResponseField>
+
+<ResponseField name="integrations" type="array">
+  An array of partial [server integrations](/developers/resources/guild#integration-object).
+</ResponseField>
+
+<ResponseField name="verified" type="boolean" required>
+  Whether the connection is verified.
+</ResponseField>
+
+<ResponseField name="friend_sync" type="boolean" required>
+  Whether friend sync is enabled for this connection.
+</ResponseField>
+
+<ResponseField name="show_activity" type="boolean" required>
+  Whether activities related to this connection will be shown in presence updates.
+</ResponseField>
+
+<ResponseField name="two_way_link" type="boolean" required>
+  Whether this connection has a corresponding third party OAuth2 token.
+</ResponseField>
+
+<ResponseField name="visibility" type="integer" required>
+  [Visibility](#connection-visibility-types) of this connection.
+</ResponseField>
+
+### Connection services
+
+| Value             | Name                |
+|-------------------|---------------------|
+| `amazon-music`    | Amazon Music        |
+| `battlenet`       | Battle.net          |
+| `bungie`          | Bungie.net          |
+| `bluesky`         | Bluesky             |
+| `crunchyroll`     | Crunchyroll         |
+| `domain`          | Domain              |
+| `ebay`            | eBay                |
+| `epicgames`       | Epic Games          |
+| `facebook`        | Facebook            |
+| `github`          | GitHub              |
+| `instagram` *     | Instagram           |
+| `leagueoflegends` | League of Legends   |
+| `mastodon`        | Mastodon            |
+| `paypal`          | PayPal              |
+| `playstation`     | PlayStation Network |
+| `reddit`          | Reddit              |
+| `riotgames`       | Riot Games          |
+| `roblox`          | Roblox              |
+| `spotify`         | Spotify             |
+| `skype` *         | Skype               |
+| `steam`           | Steam               |
+| `tiktok`          | TikTok              |
+| `twitch`          | Twitch              |
+| `twitter`         | X (Twitter)         |
+| `xbox`            | Xbox                |
+| `youtube`         | YouTube             |
+
+\* Service can no longer be added by users.
+
+### Connection visibility types
+
+| Value | Name       | Description                                       |
+|-------|------------|---------------------------------------------------|
+| `0`   | None       | Invisible to everyone except the user themselves  |
+| `1`   | Everyone   | Visible to everyone                               |
+
+---
+
+## Application role connection object
+
+The role connection object that an application has attached to a user.
+
+<ResponseField name="platform_name" type="?string">
+  The vanity name of the platform a bot has connected (max 50 characters).
+</ResponseField>
+
+<ResponseField name="platform_username" type="?string">
+  The username on the platform a bot has connected (max 100 characters).
+</ResponseField>
+
+<ResponseField name="metadata" type="object" required>
+  Object mapping [application role connection metadata](/developers/resources/application
+</ResponseField>
+
+---
+
+## Get current user
+
+<Note>
+**GET** `/users/@me`
+</Note>
+
+Returns the [user](#user-object) object of the requester's account. For OAuth2, this requires the `identify` scope, which will return the object _without_ an email, and optionally the `email` scope, which returns the object _with_ an email if the user has one.
+
+## Get user
+
+<Note>
+**GET** `/users/{user.id}`
+</Note>
+
+Returns a [user](#user-object) object for a given user ID.
+
+## Modify current user
+
+<Note>
+**PATCH** `/users/@me`
+</Note>
+
+Modify the requester's user account settings. Returns a [user](#user-object) object on success. Fires a [User Update](/developers/events/gateway-events#user-update) Gateway event.
+
+<Note>
+All parameters to this endpoint are optional.
+</Note>
+
+### JSON params
+
+<ParamField body="username" type="string">
+  User's username. If changed, may cause the user's discriminator to be randomized.
+</ParamField>
+
+<ParamField body="avatar" type="?image data">
+  If passed, modifies the user's avatar. See [image data](/developers/reference#image-data).
+</ParamField>
+
+<ParamField body="banner" type="?image data">
+  If passed, modifies the user's banner. See [image data](/developers/reference#image-data).
+</ParamField>
+
+## Get current user guilds
+
+<Note>
+**GET** `/users/@me/guilds`
+</Note>
+
+Returns a list of partial [guild](/developers/resources/guild#guild-object) objects the current user is a member of. For OAuth2, requires the `guilds` scope.
+
+<Info>
+This endpoint returns 200 guilds by default, which is the maximum number of guilds a non-bot user can join. Therefore, pagination is **not needed** for integrations that need to get a list of the users' guilds.
+</Info>
+
+### Example partial guild
+
+```json
+{
+  "id": "80351110224678912",
+  "name": "1337 Krew",
+  "icon": "8342729096ea3675442027381ff50dfe",
+  "banner": "bb42bdc37653b7cf58c4c8cc622e76cb",
+  "owner": true,
+  "permissions": "36953089",
+  "features": ["COMMUNITY", "NEWS", "ANIMATED_ICON", "INVITE_SPLASH", "BANNER", "ROLE_ICONS"],
+  "approximate_member_count": 3268,
+  "approximate_presence_count": 784
+}
+```
+
+### Query string params
+
+<ParamField query="before" type="snowflake">
+  Get guilds before this guild ID.
+</ParamField>
+
+<ParamField query="after" type="snowflake">
+  Get guilds after this guild ID.
+</ParamField>
+
+<ParamField query="limit" type="integer" default="200">
+  Max number of guilds to return (1–200).
+</ParamField>
+
+<ParamField query="with_counts" type="boolean" default="false">
+  Include approximate member and presence counts in the response.
+</ParamField>
+
+## Get current user guild member
+
+<Note>
+**GET** `/users/@me/guilds/{guild.id}/member`
+</Note>
+
+Returns a [guild member](/developers/resources/guild#guild-member-object) object for the current user. Requires the `guilds.members.read` OAuth2 scope.
+
+## Leave guild
+
+<Note>
+**DELETE** `/users/@me/guilds/{guild.id}`
+</Note>
+
+Leave a guild. Returns a `204 No Content` response on success. Fires a [Guild Delete](/developers/events/gateway-events#guild-delete) Gateway event and a [Guild Member Remove](/developers/events/gateway-events#guild-member-remove) Gateway event.
+
+## Create DM
+
+<Note>
+**POST** `/users/@me/channels`
+</Note>
+
+Create a new DM channel with a user. Returns a [DM channel](/developers/resources/channel#channel-object) object. If one already exists, it will be returned instead.
+
+<Warning>
+You should not use this endpoint to DM everyone in a server about something. DMs should generally be initiated by a user action. If you open a significant amount of DMs too quickly, your bot may be rate limited or blocked from opening new ones.
+</Warning>
+
+### JSON params
+
+<ParamField body="recipient_id" type="snowflake" required>
+  The recipient to open a DM channel with.
+</ParamField>
+
+## Create group DM
+
+<Note>
+**POST** `/users/@me/channels`
+</Note>
+
+Create a new group DM channel with multiple users. Returns a [DM channel](/developers/resources/channel#channel-object) object. This endpoint was intended to be used with the now-deprecated GameBridge SDK. Fires a [Channel Create](/developers/events/gateway-events#channel-create) Gateway event.
+
+<Warning>
+This endpoint is limited to 10 active group DMs.
+</Warning>
+
+### JSON params
+
+<ParamField body="access_tokens" type="array of strings" required>
+  Access tokens of users that have granted your app the `gdm.join` scope.
+</ParamField>
+
+<ParamField body="nicks" type="object" required>
+  A dictionary of user ids to their respective nicknames.
+</ParamField>
+
+## Get current user connections
+
+<Note>
+**GET** `/users/@me/connections`
+</Note>
+
+Returns a list of [connection](#connection-object) objects. Requires the `connections` OAuth2 scope.
+
+## Get current user application role connection
+
+<Note>
+**GET** `/users/@me/applications/{application.id}/role-connection`
+</Note>
+
+Returns the [application role connection](#application-role-connection-object) for the user. Requires an OAuth2 access token with `role_connections.write` scope for the application specified in the path.
+
+## Update current user application role connection
+
+<Note>
+**PUT** `/users/@me/applications/{application.id}/role-connection`
+</Note>
+
+Updates and returns the [application role connection](#application-role-connection-object) for the user. Requires an OAuth2 access token with `role_connections.write` scope for the application specified in the path.
+
+### JSON params
+
+<ParamField body="platform_name" type="string">
+  The vanity name of the platform a bot has connected (max 50 characters).
+</ParamField>
+
+<ParamField body="platform_username" type="string">
+  The username on the platform a bot has connected (max 100 characters).
+</ParamField>
+
+<ParamField body="metadata" type="object">
+  Object mapping [application role connection metadata](/developers/resources/application
+</ParamField>

@@ -1,0 +1,454 @@
+---
+title: Voice Connections
+description: Technical guide to implementing Discord voice connections, including WebSocket handshake, UDP setup, transport encryption, DAVE E2EE protocol, heartbeating, speaking, and resuming.
+---
+
+Voice connections operate similarly to the [Gateway](/developers/events/gateway) connection, but use a different set of payloads and a separate UDP-based connection for voice data transmission. Because UDP is used for both receiving and transmitting voice data, your client _must_ be able to receive UDP packets, even through a firewall or NAT (see [UDP Hole Punching](https://en.wikipedia.org/wiki/UDP_hole_punching)). Discord voice servers also support [IP Discovery](#ip-discovery) to help clients find their external UDP IP/port for NAT traversal.
+
+## Voice Gateway Versioning
+
+<Warning>
+Versions below 4 and the default version behavior were discontinued as of **November 18th, 2024**. Connections without a version or with a version less than 4 are rejected. Always specify `?v=8` (recommended) in your WebSocket URL.
+</Warning>
+
+| Version | Status      | WebSocket URL Append | Change                                                                 |
+|---------|-------------|----------------------|------------------------------------------------------------------------|
+| 8       | Recommended | `?v=8`               | Added server message buffering; missed messages re-delivered on resume |
+| 7       | Available   | `?v=7`               | Added channel options opcode                                           |
+| 6       | Available   | `?v=6`               | Added code version opcode                                              |
+| 5       | Available   | `?v=5`               | Added video sink wants opcode                                          |
+| 4       | Available   | `?v=4`               | Changed speaking status to bitmask from boolean                        |
+| 3       | Deprecated  | `?v=3`               | Added video                                                            |
+| 2       | Deprecated  | `?v=2`               | Changed heartbeat reply to Heartbeat ACK opcode                        |
+| 1       | Deprecated  | `?v=1`               | Initial version                                                        |
+
+---
+
+## Connecting to Voice
+
+### Step 1: Retrieve Voice Server Information
+
+Send an **Opcode 4 Gateway Voice State Update** to the main Gateway to join a voice channel:
+
+```json
+{
+  "op": 4,
+  "d": {
+    "guild_id": "41771983423143937",
+    "channel_id": "127121515262115840",
+    "self_mute": false,
+    "self_deaf": false
+  }
+}
+```
+
+The Gateway responds with **two** events that you must both receive before proceeding:
+
+1. **Voice State Update** — contains a `session_id`
+2. **Voice Server Update** — contains the `token` and `endpoint`
+
+```json
+{
+  "t": "VOICE_SERVER_UPDATE",
+  "s": 2,
+  "op": 0,
+  "d": {
+    "token": "my_token",
+    "guild_id": "41771983423143937",
+    "endpoint": "sweetwater-12345.discord.media:2048"
+  }
+}
+```
+
+<Info>
+Bot users respect the voice channel's user limit, if set. When the voice channel is full, you will not receive the Voice State Update or Voice Server Update events. Having `MOVE_MEMBERS` permission bypasses this limit.
+</Info>
+
+<Warning>
+Never cache or save voice server results — Discord's voice platform is widely distributed and servers change. When switching channels within the same guild, the `endpoint` may remain the same but the `token` changes. You cannot reuse the previous session during a channel change.
+</Warning>
+
+### Step 2: Establish the Voice WebSocket Connection
+
+Connect to `wss://ENDPOINT?v=8`. The endpoint from Voice Server Update does **not** include `wss://` — you must prepend it manually.
+
+Send **Opcode 0 Identify** with your credentials:
+
+```json
+{
+  "op": 0,
+  "d": {
+    "server_id": "41771983423143937",
+    "user_id": "104694319306248192",
+    "session_id": "my_session_id",
+    "token": "my_token",
+    "max_dave_protocol_version": 1
+  }
+}
+```
+
+The voice server responds with **Opcode 2 Ready**, containing your SSRC, UDP endpoint, and supported encryption modes:
+
+```json
+{
+  "op": 2,
+  "d": {
+    "ssrc": 1,
+    "ip": "127.0.0.1",
+    "port": 1234,
+    "modes": ["aead_aes256_gcm_rtpsize", "aead_xchacha20_poly1305_rtpsize"],
+    "heartbeat_interval": 1
+  }
+}
+```
+
+<Warning>
+The `heartbeat_interval` in the Opcode 2 Ready payload is **erroneous and should be ignored**. Use the `heartbeat_interval` value from the Opcode 8 Hello payload instead.
+</Warning>
+
+---
+
+## Heartbeating
+
+After connecting, the voice server sends **Opcode 8 Hello** with the heartbeat interval:
+
+```json
+{
+  "op": 8,
+  "d": {
+    "heartbeat_interval": 41250
+  }
+}
+```
+
+Send **Opcode 3 Heartbeat** at that interval to keep the connection alive.
+
+<CodeGroup>
+
+```json Since Voice Gateway v8
+{
+  "op": 3,
+  "d": {
+    "t": 1501184119561,
+    "seq_ack": 10
+  }
+}
+```
+
+```json Before Voice Gateway v8
+{
+  "op": 3,
+  "d": 1501184119561
+}
+```
+
+</CodeGroup>
+
+<Note>
+Since voice gateway version 8, heartbeat messages **must include `seq_ack`** — the sequence number of the last numbered message received from the gateway. See [Buffered Resume](#buffered-resume) for details.
+</Note>
+
+The server acknowledges with **Opcode 6 Heartbeat ACK**:
+
+<CodeGroup>
+
+```json Since Voice Gateway v8
+{
+  "op": 6,
+  "d": {
+    "t": 1501184119561
+  }
+}
+```
+
+```json Before Voice Gateway v8
+{
+  "op": 6,
+  "d": 1501184119561
+}
+```
+
+</CodeGroup>
+
+---
+
+## Establishing a Voice UDP Connection
+
+Using the `ip` and `port` from the Opcode 2 Ready payload, open a UDP connection. Optionally perform [IP Discovery](#ip-discovery) to determine your external IP and port, then send **Opcode 1 Select Protocol**:
+
+```json
+{
+  "op": 1,
+  "d": {
+    "protocol": "udp",
+    "data": {
+      "address": "127.0.0.1",
+      "port": 1337,
+      "mode": "aead_aes256_gcm_rtpsize"
+    }
+  }
+}
+```
+
+---
+
+## Transport Encryption and Sending Voice
+
+Voice data must be encoded with [Opus](https://www.opus-codec.org/) (stereo, 48kHz sample rate) and sent with an RTP header followed by encrypted Opus audio.
+
+### Encryption Modes
+
+| Mode                               | Key                               | Nonce                                                 | Status                |
+|------------------------------------|-----------------------------------|-------------------------------------------------------|-----------------------|
+| AEAD AES256-GCM (RTP Size)         | `aead_aes256_gcm_rtpsize`         | 32-bit incremental integer, appended to payload       | Available (Preferred) |
+| AEAD XChaCha20 Poly1305 (RTP Size) | `aead_xchacha20_poly1305_rtpsize` | 32-bit incremental integer, appended to payload       | Available (Required)  |
+| XSalsa20 Poly1305 Lite (RTP Size)  | `xsalsa20_poly1305_lite_rtpsize`  | 32-bit incremental integer, appended to payload       | Deprecated            |
+| AEAD AES256-GCM                    | `aead_aes256_gcm`                 | 32-bit incremental integer, appended to payload       | Deprecated            |
+| XSalsa20 Poly1305                  | `xsalsa20_poly1305`               | Copy of RTP header                                    | Deprecated            |
+| XSalsa20 Poly1305 Suffix           | `xsalsa20_poly1305_suffix`        | 24 random bytes                                       | Deprecated            |
+| XSalsa20 Poly1305 Lite             | `xsalsa20_poly1305_lite`          | 32-bit incremental integer, appended to payload       | Deprecated            |
+
+<Warning>
+The deprecated encryption modes were discontinued as of **November 18th, 2024**. The voice gateway will reject connections using deprecated modes. You **must** support `aead_xchacha20_poly1305_rtpsize`. Prefer `aead_aes256_gcm_rtpsize` when available.
+</Warning>
+
+<Warning>
+The nonce must be stripped from the payload before encrypting and before decrypting the audio data.
+</Warning>
+
+After selecting your mode, the voice server responds with **Opcode 4 Session Description** containing the `secret_key` (32-byte array) used for transport encryption:
+
+```json
+{
+  "op": 4,
+  "d": {
+    "mode": "aead_aes256_gcm_rtpsize",
+    "secret_key": [251, 100, 11, "..."],
+    "dave_protocol_version": 1
+  }
+}
+```
+
+### Voice Packet Structure
+
+| Field           | Type                          | Size    |
+|-----------------|-------------------------------|---------|
+| Version + Flags | Single byte value of `0x80`   | 1 byte  |
+| Payload Type    | Single byte value of `0x78`   | 1 byte  |
+| Sequence        | Unsigned short (big endian)   | 2 bytes |
+| Timestamp       | Unsigned integer (big endian) | 4 bytes |
+| SSRC            | Unsigned integer (big endian) | 4 bytes |
+| Encrypted audio | Binary data                   | n bytes |
+
+---
+
+## Speaking
+
+Before sending any audio, you **must** send at least one **Opcode 5 Speaking** payload to set the initial speaking mode and update your SSRC. The speaking flags are a bitfield:
+
+| Flag       | Value    | Meaning                                                         |
+|------------|----------|-----------------------------------------------------------------|
+| Microphone | `1 << 0` | Normal transmission of voice audio                              |
+| Soundshare | `1 << 1` | Transmission of context audio for video, no speaking indicator  |
+| Priority   | `1 << 2` | Priority speaker, lowering audio of other speakers              |
+
+```json
+{
+  "op": 5,
+  "d": {
+    "speaking": 5,
+    "delay": 0,
+    "ssrc": 1
+  }
+}
+```
+
+<Warning>
+You must send at least one Opcode 5 Speaking payload before sending voice data, or you will be disconnected with an invalid SSRC error.
+</Warning>
+
+<Info>
+The `delay` property should be set to `0` for bots.
+</Info>
+
+### Voice Data Interpolation
+
+When there is a break in the sent data, do not simply stop transmitting. Send **five frames of silence** (`0xF8, 0xFF, 0xFE`) before stopping to avoid unintended Opus interpolation with subsequent transmissions.
+
+---
+
+## Resuming Voice Connection
+
+When your client detects a severed connection, open a new WebSocket and send **Opcode 7 Resume**:
+
+<CodeGroup>
+
+```json Since Voice Gateway v8
+{
+  "op": 7,
+  "d": {
+    "server_id": "41771983423143937",
+    "session_id": "my_session_id",
+    "token": "my_token",
+    "seq_ack": 10
+  }
+}
+```
+
+```json Before Voice Gateway v8
+{
+  "op": 7,
+  "d": {
+    "server_id": "41771983423143937",
+    "session_id": "my_session_id",
+    "token": "my_token"
+  }
+}
+```
+
+</CodeGroup>
+
+On success, the voice server responds with **Opcode 9 Resumed**:
+
+```json
+{
+  "op": 9,
+  "d": null
+}
+```
+
+If the resume fails (e.g. invalid session), the WebSocket closes with a [Voice Close Event Code](/developers/topics/opcodes-and-status-codes#voice-voice-close-event-codes). Follow the full [Connecting to Voice](#connecting-to-voice) flow to reconnect.
+
+### Buffered Resume
+
+Since voice gateway version 8, the gateway can resend messages that were lost during a disconnect. To support this:
+
+- The gateway includes a `seq` field on messages that may need re-delivery.
+- Clients must track the last `seq` value received.
+- Include `seq_ack` in both Heartbeat and Resume payloads.
+
+```json
+{
+  "op": 5,
+  "d": {
+    "speaking": 0,
+    "delay": 0,
+    "ssrc": 110
+  },
+  "seq": 10
+}
+```
+
+If no sequenced messages have been received, `seq_ack` can be omitted or set to `-1`. The gateway handles sequence number wrap-around automatically.
+
+---
+
+## IP Discovery
+
+Most routers on the Internet mask UDP ports through NAT. Use IP discovery to find your external IP and port for receiving voice. Send the following UDP packet (all numeric fields are big endian) to your voice port:
+
+| Field   | Description                                                    | Size     |
+|---------|----------------------------------------------------------------|----------|
+| Type    | `0x1` for request, `0x2` for response                          | 2 bytes  |
+| Length  | Message length excluding Type and Length fields (value `70`)   | 2 bytes  |
+| SSRC    | Your SSRC as an unsigned integer                               | 4 bytes  |
+| Address | Null-terminated string in response                             | 64 bytes |
+| Port    | Unsigned short                                                 | 2 bytes  |
+
+---
+
+## End-to-End Encryption (DAVE Protocol)
+
+Since September 2024, Discord is migrating voice and video in DMs, Group DMs, voice channels, and Go Live streams to use end-to-end encryption (E2EE) via the DAVE protocol.
+
+<Warning>
+Starting **March 1st, 2026**, Discord will **only support E2EE calls** for all audio and video conversations in DMs, GDMs, voice channels, and Go Live streams. Implement DAVE support as soon as possible.
+</Warning>
+
+The most thorough documentation on the DAVE protocol is available in the [Protocol Whitepaper](https://daveprotocol.com). Discord's open-source library [libdave](https://github.com/discord/libdave) can assist your implementation.
+
+When a call is E2EE, all members exchange keys via a [Messaging Layer Security (MLS)](https://www.rfc-editor.org/rfc/rfc9420.html) group. This group derives per-sender ratcheted media keys to encrypt/decrypt media frames.
+
+### Binary WebSocket Messages
+
+Some DAVE protocol opcodes are sent as binary WebSocket messages rather than JSON. Binary messages have the following format:
+
+| Field           | Description                                                          | Size           |
+|-----------------|----------------------------------------------------------------------|----------------|
+| Sequence Number | OPTIONAL (server → client only) big-endian uint16 sequence number   | 2 bytes        |
+| Opcode          | Unsigned integer opcode value                                        | 1 byte         |
+| Payload         | Binary message payload (format defined by opcode)                    | Variable bytes |
+
+Sequence numbers are only sent server → client. All server-sent binary opcodes include a sequence number, used when resuming.
+
+### Indicating DAVE Protocol Support
+
+Include the highest DAVE protocol version you support in **Opcode 0 Identify** as `max_dave_protocol_version`. Sending `0` or omitting the field indicates no DAVE protocol support.
+
+The voice gateway specifies the selected version in **Opcode 4 Session Description** under `dave_protocol_version`.
+
+<Warning>
+Clients must retain backwards-compatibility with all non-discontinued DAVE protocol versions. The voice gateway selects the lowest shared protocol version for the call.
+</Warning>
+
+### Protocol Transitions
+
+Transitions occur when upgrading/downgrading E2EE, changing protocol versions, or when the MLS group changes. The flow:
+
+1. Server sends a prepare transition opcode (Opcode 21, 24, 29, or 30)
+2. Client prepares local state for the transition
+3. Client sends **Opcode 23 DAVE Transition Ready**
+4. When all participants are ready (or a timeout is reached), server sends **Opcode 22 DAVE Execute Transition**
+5. Media senders begin using the new protocol context
+
+<Accordion title="Downgrade (Protocol Version 0)">
+Announced via **Opcode 21 DAVE Prepare Transition**. Occurs when a non-DAVE client joins the call. After execution, senders stop sending E2EE-formatted media.
+</Accordion>
+
+<Accordion title="Protocol Version Change and Upgrade">
+Announced via **Opcode 24 DAVE Prepare Epoch**, which includes the `epoch` for the upcoming MLS epoch.
+
+- `epoch = 1` means a new MLS group is being created. Participants must:
+  - Prepare a local MLS group with parameters for the DAVE protocol version
+  - Generate and send **Opcode 26 DAVE MLS Key Package**
+- `epoch > 1` means the protocol version of the existing MLS group is changing
+</Accordion>
+
+<Accordion title="MLS Group Changes">
+When participants must change, existing members receive **Opcode 29 DAVE MLS Announce Commit Transition** and new members receive **Opcode 30 DAVE MLS Welcome**. Both include the transition ID and the binary MLS Commit or Welcome message.
+
+Existing members apply the commit to progress their local MLS group state, then send **Opcode 23 DAVE Transition Ready**. Welcomed members send the same opcode after successfully joining the group from the Welcome message.
+</Accordion>
+
+### Audio Frame E2EE
+
+Transport encryption operates at the packet level. DAVE E2EE operates at the **frame level** — the full contents of OPUS frames are end-to-end encrypted using AES128-GCM.
+
+#### Payload Format
+
+| Field                      | Description                                                 | Size           |
+|----------------------------|-------------------------------------------------------------|----------------|
+| E2EE OPUS Frame            | Ciphertext for E2EE OPUS frame                              | Variable bytes |
+| AES-GCM Auth. Tag          | Truncated AES128-GCM AEAD Authentication Tag                | 8 bytes        |
+| ULEB128 Nonce              | ULEB128 synchronization nonce                               | Variable bytes |
+| ULEB128 Unencrypted Ranges | ULEB128 offset/length pairs of unencrypted data             | Variable bytes |
+| Supplemental Data Size     | Unsigned integer bytes size of supplemental data            | 1 byte         |
+| Magic Marker               | `0xFAFA` marker to assist with protocol frame identification | 2 bytes        |
+
+<Note>
+The ULEB128 unencrypted ranges field is empty (0 bytes) for OPUS frames because the full contents are encrypted.
+</Note>
+
+#### Key Derivation
+
+Each sender has a ratcheted per-sender key, with a new ratchet created per MLS group epoch. The initial secret is an exported 16-byte secret from the MLS group. Keys are retrieved via a generation counter derived from the most-significant byte of the 4-byte nonce.
+
+See the [Sender Key Derivation section](https://daveprotocol.com/#sender-key-derivation) of the protocol whitepaper for full details.
+
+#### Nonce
+
+The protocol uses at most a 4-byte truncated nonce, expanded to the required 12-byte AES-GCM nonce by setting the 8 most significant bytes to zero.
+
+#### Authentication Tag
+
+The AES128-GCM authentication tag is truncated to 8 bytes. Remove the 4 least significant bytes from the full 12-byte tag if your implementation always returns the full tag.

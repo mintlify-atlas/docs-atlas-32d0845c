@@ -1,97 +1,52 @@
 ---
-title: "Introduction"
-description: "Welcome to the new home for your documentation"
+title: "Discord Developer Platform"
+description: "Build bots, Activities, and game integrations on Discord. Access the REST API, Gateway, Social SDK, and more."
 ---
 
-## Setting up
+Welcome to the Discord Developer Platform documentation. Whether you're building a Discord bot, creating an embedded Activity, or integrating Discord's social layer into your game, you'll find everything you need here.
 
-Get your documentation site up and running in minutes.
-
-<Card
-  title="Start here"
-  icon="rocket"
-  href="/quickstart"
-  horizontal
->
-  Follow our three step quickstart guide.
-</Card>
-
-## Make it yours
-
-Design a docs site that looks great and empowers your users.
-
-<Columns cols={2}>
-  <Card
-    title="Edit locally"
-    icon="pen-to-square"
-    href="/development"
-  >
-    Edit your docs locally and preview them in real time.
+<CardGroup cols={3}>
+  <Card title="Bots & Apps" icon="robot" href="/developers/bots/overview">
+    Build automated apps, slash commands, and integrations that run inside Discord servers.
   </Card>
-  <Card
-    title="Customize your site"
-    icon="palette"
-    href="/essentials/settings"
-  >
-    Customize the design and colors of your site to match your brand.
+  <Card title="Activities" icon="gamepad" href="/developers/activities/overview">
+    Create multiplayer games and social experiences that launch directly inside Discord.
   </Card>
-    <Card
-    title="Set up navigation"
-    icon="map"
-    href="/essentials/navigation"
-  >
-    Organize your docs to help users find what they need and succeed with your product.
+  <Card title="Social SDK" icon="users" href="/developers/discord-social-sdk/overview">
+    Add rich presence, voice chat, and social features to your game across all platforms.
   </Card>
-  <Card
-    title="API documentation"
-    icon="terminal"
-    href="/api-reference/introduction"
-  >
-    Auto-generate API documentation from OpenAPI specifications.
-  </Card>
-</Columns>
+</CardGroup>
 
-## Create beautiful pages
+## Get started
 
-Everything you need to create world-class documentation.
+<Steps>
+  <Step title="Create an application">
+    Go to the [Discord Developer Portal](https://discord.com/developers/applications) and create a new application. This gives you a client ID and client secret for API access.
+  </Step>
+  <Step title="Choose your platform">
+    Decide what you're building: a **Bot** for server automation, an **Activity** for embedded games, or the **Social SDK** for game integrations.
+  </Step>
+  <Step title="Follow the quickstart">
+    Follow the [Getting Started guide](/developers/quick-start/getting-started) to build your first Discord app in minutes.
+  </Step>
+  <Step title="Explore the API reference">
+    Dive into the full [API Reference](/developers/reference) to explore all available resources, endpoints, and event types.
+  </Step>
+</Steps>
 
-<Columns cols={2}>
-  <Card
-    title="Write with MDX"
-    icon="pen-fancy"
-    href="/essentials/markdown"
-  >
-    Use MDX to style your docs pages.
-  </Card>
-  <Card
-    title="Code samples"
-    icon="code"
-    href="/essentials/code"
-  >
-    Add sample code to demonstrate how to use your product.
-  </Card>
-  <Card
-    title="Images"
-    icon="image"
-    href="/essentials/images"
-  >
-    Display images and other media.
-  </Card>
-  <Card
-    title="Reusable snippets"
-    icon="recycle"
-    href="/essentials/reusable-snippets"
-  >
-    Write once and reuse across your docs.
-  </Card>
-</Columns>
+## Explore by topic
 
-## Need inspiration?
-
-<Card
-  title="See complete examples"
-  icon="stars"
-  href="https://mintlify.com/customers"
->
-  Browse our showcase of exceptional documentation sites.
-</Card>
+<CardGroup cols={2}>
+  <Card title="API Reference" icon="code" href="/developers/reference">
+    Full REST API documentation including all resources, endpoints, authentication, and rate limits.
+  </Card>
+  <Card title="Gateway & Events" icon="bolt" href="/developers/events/gateway">
+    Connect to the Discord Gateway WebSocket to receive real-time events from servers and users.
+  </Card>
+  <Card title="Application Commands" icon="terminal" href="/developers/interactions/application-commands">
+    Build slash commands, user commands, and message commands with rich interaction support.
+  </Card>
+  <Card title="Monetization" icon="dollar-sign" href="/developers/monetization/overview">
+    Implement subscriptions and one-time purchases inside your Discord app or Activity.
+  </Card>
+</CardGroup>

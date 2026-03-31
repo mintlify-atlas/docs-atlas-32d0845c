@@ -1,0 +1,205 @@
+---
+title: Social SDK reference
+description: Complete API reference for the Discord Social SDK.
+---
+
+The Social SDK reference documentation provides a complete API reference for all classes, methods, enumerations, and types available in the Discord Social SDK.
+
+<Info>
+The full API reference is hosted externally as auto-generated documentation from the SDK source code. Click the link below to open it.
+</Info>
+
+<Card title="Discord Social SDK API Reference" href="https://discord.com/developers/docs/social-sdk/index.html">
+  Browse the complete API reference documentation including all classes, methods, enumerations, and types.
+</Card>
+
+---
+
+## Key classes
+
+The following are the most commonly used classes in the Discord Social SDK.
+
+### Client
+
+The `Client` class is the main entry point for the Discord Social SDK. It manages authentication, connection state, and provides access to all social features.
+
+| Method | Description |
+|--------|-------------|
+| `Client::Authorize` | Initiate OAuth2 authorization flow |
+| `Client::Connect` | Establish connection to Discord |
+| `Client::UpdateToken` | Set the access token for API calls |
+| `Client::GetToken` | Exchange authorization code for access token (public clients) |
+| `Client::RefreshToken` | Refresh an expired access token |
+| `Client::RevokeToken` | Revoke access and refresh tokens |
+| `Client::GetDefaultPresenceScopes` | Returns `openid sdk.social_layer_presence` |
+| `Client::GetDefaultCommunicationScopes` | Returns `openid sdk.social_layer` |
+| `Client::CreateAuthorizationCodeVerifier` | Generate PKCE code verifier and challenge |
+| `Client::GetRelationships` | Get all relationships for the current user |
+| `Client::GetRelationshipsByGroup` | Get relationships organized by status group |
+| `Client::SetRelationshipGroupsUpdatedCallback` | Callback when friends list grouping changes |
+| `Client::UpdateRichPresence` | Update the user's rich presence activity |
+| `Client::SetApplicationId` | Set the application ID (for RPC-only rich presence) |
+| `Client::CreateOrJoinLobby` | Create or join a lobby by secret |
+| `Client::LeaveLobby` | Leave a lobby |
+| `Client::SendLobbyMessage` | Send a message to a lobby |
+| `Client::GetLobbyMessagesWithLimit` | Retrieve lobby chat history |
+| `Client::StartCall` | Start or join a voice call in a lobby |
+| `Client::StartCallWithAudioCallbacks` | Start a call with custom audio processing |
+| `Client::EndCall` | End a voice call in a specific lobby |
+| `Client::EndCalls` | End all active voice calls |
+| `Client::SetSelfMuteAll` | Mute microphone across all calls |
+| `Client::SetSelfDeafAll` | Deafen across all calls |
+| `Client::SetInputVolume` | Set microphone volume |
+| `Client::SetOutputVolume` | Set speaker volume |
+| `Client::AddLogCallback` | Register a logging callback |
+| `Client::SetLogDir` | Write SDK logs to a directory |
+| `Client::SetAecDump` | Enable AEC diagnostic recording |
+| `Client::SetStatusChangedCallback` | Monitor client connection status |
+| `Client::SetUserUpdatedCallback` | Callback when a user's info changes |
+| `Client::SetRelationshipCreatedCallback` | Callback when a relationship is created |
+| `Client::SetRelationshipDeletedCallback` | Callback when a relationship is deleted |
+| `Client::SetMessageCreatedCallback` | Callback when a message is received |
+| `Client::GetProvisionalToken` | Create a provisional account token |
+
+### Activity
+
+The `Activity` class represents a user's rich presence. Set it using `Client::UpdateRichPresence`.
+
+| Method | Description |
+|--------|-------------|
+| `Activity::SetType` | Set the activity type (e.g., `ActivityTypes::Playing`) |
+| `Activity::SetDetails` | Set the main description line |
+| `Activity::SetState` | Set the secondary status line |
+| `Activity::SetTimestamps` | Set start/end timestamps |
+| `Activity::SetAssets` | Set large/small images and invite cover image |
+| `Activity::SetParty` | Set party ID, current size, and max size |
+| `Activity::SetSecrets` | Set join secret for game invites |
+| `Activity::SetSupportedPlatforms` | Set where join buttons appear |
+| `Activity::SetStatusDisplayType` | Control what appears in status text |
+| `Activity::SetStateUrl` | Make the state field a clickable link |
+| `Activity::SetDetailsUrl` | Make the details field a clickable link |
+
+### Call
+
+The `Call` class represents an active voice call in a lobby.
+
+| Method | Description |
+|--------|-------------|
+| `Call::SetSelfMute` | Mute your microphone in this call |
+| `Call::SetSelfDeaf` | Deafen yourself in this call |
+| `Call::SetParticipantVolume` | Adjust a specific participant's volume |
+| `Call::SetVADThreshold` | Configure voice activity detection sensitivity |
+
+### UserHandle
+
+The `UserHandle` class represents a Discord user. Handle objects automatically reflect data changes without needing to be recreated.
+
+| Property | Description |
+|----------|-------------|
+| `UserHandle::Id` | User's Discord ID |
+| `UserHandle::DisplayName` | User's display name |
+| `UserHandle::Status` | User's online status (`StatusType`) |
+| `UserHandle::GameActivity` | User's current game activity (if in your game) |
+| `UserHandle::IsProvisional` | Whether the user has a provisional account |
+
+### VoiceStateHandle
+
+The `VoiceStateHandle` class provides voice state information for a voice call participant.
+
+| Method | Description |
+|--------|-------------|
+| `VoiceStateHandle::SelfMute` | Returns `true` if the user has muted themselves |
+| `VoiceStateHandle::SelfDeaf` | Returns `true` if the user has deafened themselves |
+
+---
+
+## Key enumerations
+
+### ActivityTypes
+
+| Value | Description |
+|-------|-------------|
+| `Playing` | Standard game activity — use this for games |
+| `Streaming` | Streaming activity |
+| `Listening` | Listening activity |
+| `Watching` | Watching activity |
+
+### RelationshipType
+
+| Value | Description |
+|-------|-------------|
+| `Friend` | Confirmed friendship |
+| `PendingOutgoing` | Sent friend request waiting for acceptance |
+| `PendingIncoming` | Received friend request waiting for response |
+| `Blocked` | Blocked user |
+
+### RelationshipGroupType
+
+Used with `Client::GetRelationshipsByGroup` to retrieve pre-sorted friend groups:
+
+| Value | Description |
+|-------|-------------|
+| `OnlinePlayingGame` | Friends online and playing your game |
+| `OnlineElsewhere` | Friends online but not in your game |
+| `Offline` | Friends who are offline |
+
+### StatusType
+
+| Value | Description |
+|-------|-------------|
+| `Online` | User is online |
+| `Idle` | User is idle |
+| `DoNotDisturb` | User has Do Not Disturb enabled |
+| `Offline` | User is offline |
+
+### AuthorizationTokenType
+
+| Value | Description |
+|-------|-------------|
+| `Bearer` | Standard OAuth2 bearer token |
+
+### LoggingSeverity
+
+| Value | Description |
+|-------|-------------|
+| `Verbose (1)` | All log messages |
+| `Info (2)` | Informational messages |
+| `Warn (3)` | Warnings only |
+| `Error (4)` | Errors only (recommended for production) |
+
+---
+
+## AuthorizationArgs
+
+`AuthorizationArgs` is passed to `Client::Authorize` to configure the OAuth2 authorization request.
+
+| Method | Description |
+|--------|-------------|
+| `AuthorizationArgs::SetClientId` | Set your Discord Application ID |
+| `AuthorizationArgs::SetScopes` | Set the OAuth2 scopes to request |
+| `AuthorizationArgs::SetCodeChallenge` | Set the PKCE code challenge |
+
+---
+
+## Free functions
+
+| Function | Description |
+|----------|-------------|
+| `discordpp::RunCallbacks` | Process pending SDK callbacks — call from your game loop |
+| `discordpp::EnumToString` | Convert an SDK enum value to its string representation |
+
+---
+
+## Next steps
+
+<CardGroup cols={3}>
+  <Card title="Getting started" href="/developers/discord-social-sdk/getting-started">
+    Set up the SDK in your game engine.
+  </Card>
+  <Card title="Development guides" href="/developers/discord-social-sdk/development-guides/account-linking-with-discord">
+    Step-by-step guides for each social feature.
+  </Card>
+  <Card title="How-to guides" href="/developers/discord-social-sdk/how-to">
+    Common solutions for debugging and production setup.
+  </Card>
+</CardGroup>

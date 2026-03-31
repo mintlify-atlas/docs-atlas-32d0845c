@@ -1,0 +1,182 @@
+---
+title: "Social SDK How-To Guides"
+description: "Common solutions for integrating Discord Social SDK features into your game."
+---
+
+These guides cover practical integration tasks for the Discord Social SDK.
+
+<CardGroup cols={2}>
+  <Card title="Debug & Log" icon="bug" href="/developers/discord-social-sdk/how-to#debug-and-log">
+    Enable logging and install debugging symbols to troubleshoot SDK issues.
+  </Card>
+  <Card title="Use with Discord APIs" icon="cloud" href="/developers/discord-social-sdk/how-to#use-with-discord-apis">
+    Combine the SDK with Discord's REST APIs for server-side operations.
+  </Card>
+  <Card title="Integrate Moderation" icon="shield" href="/developers/discord-social-sdk/how-to#integrate-moderation">
+    Implement content moderation for text and audio in your game.
+  </Card>
+  <Card title="Handle Special Characters" icon="font" href="/developers/discord-social-sdk/how-to#handle-special-characters-in-display-names">
+    Properly render Unicode characters in Discord display names.
+  </Card>
+</CardGroup>
+
+---
+
+## Debug and Log
+
+### Debugging symbols
+
+Debugging symbols are hosted at `https://storage.googleapis.com/discord-public-symbols`. In Visual Studio, add this URL under **Tools → Options → Debugging → Symbols**.
+
+### Logging
+
+Use `Client::AddLogCallback` to receive log messages. Use `Client::SetLogDir` to write logs to a directory.
+
+```cpp
+client->AddLogCallback([](auto message, auto severity) {
+    std::cout << "[" << EnumToString(severity) << "] " << message << std::endl;
+}, discordpp::LoggingSeverity::Info);
+```
+
+<Info>
+For production builds use `ERROR (4)` or `WARN (3)`. For development use `INFO (2)` or `VERBOSE (1)` for more detail.
+</Info>
+
+### Audio logging
+
+Use `Client::SetAecDump` to enable diagnostic recording of audio input/output for troubleshooting echo cancellation (AEC) issues.
+
+---
+
+## Use with Discord APIs
+
+The SDK handles client-side functionality. Use Discord's REST API from your game backend for server-side operations.
+
+### Authentication
+
+<Tabs>
+  <Tab title="Bot token">
+    ```bash
+    curl -X GET https://discord.com/api/v10/users/@me \
+      -H "Authorization: Bot YOUR_BOT_TOKEN"
+    ```
+    <Warning>Always prefix bot tokens with `Bot ` in the Authorization header.</Warning>
+  </Tab>
+  <Tab title="Bearer token">
+    ```bash
+    curl -X GET https://discord.com/api/v10/users/@me \
+      -H "Authorization: Bearer USER_ACCESS_TOKEN"
+    ```
+  </Tab>
+</Tabs>
+
+### OAuth2 token exchange
+
+```python
+import requests
+
+def exchange_code(code, redirect_uri):
+    data = {
+        'client_id': 'YOUR_CLIENT_ID',
+        'client_secret': 'YOUR_CLIENT_SECRET',
+        'grant_type': 'authorization_code',
+        'code': code,
+        'redirect_uri': redirect_uri
+    }
+    response = requests.post('https://discord.com/api/v10/oauth2/token', data=data)
+    return response.json()
+```
+
+### Using the OpenAPI spec
+
+Use the [Discord OpenAPI Spec](https://github.com/discord/discord-api-spec) with a code generator like [openapi-generator.tech](https://openapi-generator.tech/) to generate a typed client for your backend language.
+
+**Best practices:**
+- Never expose bot tokens in client-side code
+- Respect Discord's rate limits and implement exponential backoff
+- Cache responses when appropriate
+
+---
+
+## Integrate Moderation
+
+Effective moderation is required under the [Discord Social SDK Terms](https://support-dev.discord.com/hc/en-us/articles/30225844245271-Discord-Social-SDK-Terms).
+
+### Your responsibilities
+
+- **On Discord:** Discord's Community Guidelines and Terms of Service apply to content rendered on Discord (including lobby/DM messages from your game). Discord can take platform-level actions on Discord accounts.
+- **In your game:** You are responsible for your own content policies, in-game moderation, and providing players a way to report violations.
+
+<Warning>
+You are responsible for any third-party moderation services you use, including obtaining required player consents.
+</Warning>
+
+### Server-side chat moderation
+
+Discord's moderation metadata API lets your backend attach `moderation_metadata` to messages. The metadata is delivered to active game sessions via `GAME_DIRECT_MESSAGE_UPDATE` or `LOBBY_MESSAGE_UPDATE` webhook events — no polling required.
+
+<Steps>
+  <Step title="Receive webhook event">
+    Your backend receives a webhook when a message is created or updated.
+  </Step>
+  <Step title="Evaluate the message">
+    Run your moderation logic against the message content.
+  </Step>
+  <Step title="Attach metadata">
+    POST moderation metadata back to Discord's API for the message.
+  </Step>
+  <Step title="Metadata delivered">
+    Active game sessions receive the metadata via webhook events in real time.
+  </Step>
+</Steps>
+
+### Client-side audio moderation
+
+Use `Client::SetAudioModerationCallback` to receive callbacks when audio content requires moderation review.
+
+### Handling banned Discord accounts
+
+A Discord account ban does not affect the player's separate game account. However, a banned Discord account loses access to SDK features that require an account connection (such as voice chat and lobbies).
+
+---
+
+## Handle Special Characters in Display Names
+
+Discord display names can contain Unicode characters including emoji, CJK characters, RTL text, and combining diacritics.
+
+### Rendering guidelines
+
+- Use a Unicode-aware font and text rendering library
+- Normalize strings using NFC (canonical decomposition + canonical composition) before display
+- Sanitize display names before inserting into HTML contexts to prevent XSS
+
+### Truncation
+
+Truncate on grapheme cluster boundaries rather than byte or code point boundaries to avoid splitting multi-byte characters.
+
+```cpp
+// Get the display name
+std::string displayName = user.DisplayName();
+// Use a Unicode library (e.g., ICU) to truncate correctly
+```
+
+### Sorting and comparison
+
+Use locale-aware collation for sorting friend lists. Avoid byte-by-byte string comparison for user-visible ordering.
+
+<Note>
+Discord display names may contain zero-width characters. Strip zero-width joiners/non-joiners if you use display names as keys in data structures.
+</Note>
+
+---
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Managing Lobbies" icon="users" href="/developers/discord-social-sdk/development-guides/managing-lobbies">
+    Create lobbies and manage voice chat for multiplayer games.
+  </Card>
+  <Card title="Social SDK Overview" icon="grid" href="/developers/discord-social-sdk/overview">
+    Return to the Social SDK overview for a full feature summary.
+  </Card>
+</CardGroup>

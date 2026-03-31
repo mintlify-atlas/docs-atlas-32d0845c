@@ -1,0 +1,269 @@
+---
+title: Audit Log
+description: Reference for Discord audit log objects and endpoints for viewing administrative actions in a guild.
+---
+
+When an administrative action is performed in a guild, an entry is added to its audit log. Viewing audit logs requires the `VIEW_AUDIT_LOG` permission. All audit log entries are stored for 45 days.
+
+When an app performs an eligible action, it can pass an `X-Audit-Log-Reason` header to indicate why the action was taken.
+
+## Audit log object
+
+### Audit log structure
+
+<ResponseField name="application_commands" type="array of application command objects" required>
+  List of application commands referenced in the audit log.
+</ResponseField>
+
+<ResponseField name="audit_log_entries" type="array of audit log entry objects" required>
+  List of audit log entries, sorted from most to least recent.
+</ResponseField>
+
+<ResponseField name="auto_moderation_rules" type="array of auto moderation rule objects" required>
+  List of auto moderation rules referenced in the audit log.
+</ResponseField>
+
+<ResponseField name="guild_scheduled_events" type="array of guild scheduled event objects" required>
+  List of guild scheduled events referenced in the audit log.
+</ResponseField>
+
+<ResponseField name="integrations" type="array of partial integration objects" required>
+  List of partial integration objects.
+</ResponseField>
+
+<ResponseField name="threads" type="array of channel objects" required>
+  List of threads referenced in the audit log. Threads referenced in `THREAD_CREATE` and `THREAD_UPDATE` events are included since archived threads might not be kept in memory by clients.
+</ResponseField>
+
+<ResponseField name="users" type="array of user objects" required>
+  List of users referenced in the audit log.
+</ResponseField>
+
+<ResponseField name="webhooks" type="array of webhook objects" required>
+  List of webhooks referenced in the audit log.
+</ResponseField>
+
+### Partial integration object example
+
+```json
+{
+  "id": "33590653072239123",
+  "name": "A Name",
+  "type": "twitch",
+  "account": {
+    "name": "twitchusername",
+    "id": "1234567"
+  },
+  "application_id": "94651234501213162"
+}
+```
+
+---
+
+## Audit log entry object
+
+Each audit log entry represents a single administrative action indicated by `action_type`. Most entries contain changes in the `changes` array that affected an entity in Discord.
+
+Apps can specify why an administrative action is being taken by passing an `X-Audit-Log-Reason` request header. The header supports 1–512 URL-encoded UTF-8 characters. Reasons are visible to users in the client and to apps when fetching audit log entries.
+
+### Audit log entry structure
+
+<ResponseField name="target_id" type="?string" required>
+  ID of the affected entity (webhook, user, role, etc.).
+</ResponseField>
+
+<ResponseField name="changes" type="array of audit log change objects">
+  Changes made to the `target_id`. Optional field.
+</ResponseField>
+
+<ResponseField name="user_id" type="?snowflake" required>
+  User or app that made the changes.
+</ResponseField>
+
+<ResponseField name="id" type="snowflake" required>
+  ID of the entry.
+</ResponseField>
+
+<ResponseField name="action_type" type="integer" required>
+  Type of action that occurred. See [audit log events](#audit-log-events).
+</ResponseField>
+
+<ResponseField name="options" type="optional audit entry info object">
+  Additional info for certain event types. Optional field.
+</ResponseField>
+
+<ResponseField name="reason" type="string">
+  Reason for the change (1–512 characters). Optional field.
+</ResponseField>
+
+<Warning>
+For `APPLICATION_COMMAND_PERMISSION_UPDATE` events, the `target_id` is the command ID or the app ID, since the `changes` array represents the entire `permissions` property on the guild permissions object.
+</Warning>
+
+### Audit log events
+
+The table below lists all audit log events and their `action_type` values.
+
+<Info>
+You should assume that your app may encounter any field for the changed object, though none are guaranteed to be present. In most cases only a subset of the object's fields will be in the `changes` array.
+</Info>
+
+| Event                                       | Value | Description                                               | Object changed                    |
+|---------------------------------------------|-------|-----------------------------------------------------------|-----------------------------------|
+| GUILD_UPDATE                                | 1     | Server settings were updated                              | Guild                             |
+| CHANNEL_CREATE                              | 10    | Channel was created                                       | Channel                           |
+| CHANNEL_UPDATE                              | 11    | Channel settings were updated                             | Channel                           |
+| CHANNEL_DELETE                              | 12    | Channel was deleted                                       | Channel                           |
+| CHANNEL_OVERWRITE_CREATE                    | 13    | Permission overwrite was added to a channel               | Channel Overwrite                 |
+| CHANNEL_OVERWRITE_UPDATE                    | 14    | Permission overwrite was updated for a channel            | Channel Overwrite                 |
+| CHANNEL_OVERWRITE_DELETE                    | 15    | Permission overwrite was deleted from a channel           | Channel Overwrite                 |
+| MEMBER_KICK                                 | 20    | Member was removed from server                            |                                   |
+| MEMBER_PRUNE                                | 21    | Members were pruned from server                           |                                   |
+| MEMBER_BAN_ADD                              | 22    | Member was banned from server                             |                                   |
+| MEMBER_BAN_REMOVE                           | 23    | Server ban was lifted for a member                        |                                   |
+| MEMBER_UPDATE                               | 24    | Member was updated in server                              | Member                            |
+| MEMBER_ROLE_UPDATE                          | 25    | Member was added or removed from a role                   | Partial Role                      |
+| MEMBER_MOVE                                 | 26    | Member was moved to a different voice channel             |                                   |
+| MEMBER_DISCONNECT                           | 27    | Member was disconnected from a voice channel              |                                   |
+| BOT_ADD                                     | 28    | Bot user was added to server                              |                                   |
+| ROLE_CREATE                                 | 30    | Role was created                                          | Role                              |
+| ROLE_UPDATE                                 | 31    | Role was edited                                           | Role                              |
+| ROLE_DELETE                                 | 32    | Role was deleted                                          | Role                              |
+| INVITE_CREATE                               | 40    | Server invite was created                                 | Invite and Invite Metadata        |
+| INVITE_UPDATE                               | 41    | Server invite was updated                                 | Invite and Invite Metadata        |
+| INVITE_DELETE                               | 42    | Server invite was deleted                                 | Invite and Invite Metadata        |
+| WEBHOOK_CREATE                              | 50    | Webhook was created                                       | Webhook                           |
+| WEBHOOK_UPDATE                              | 51    | Webhook properties or channel were updated                | Webhook                           |
+| WEBHOOK_DELETE                              | 52    | Webhook was deleted                                       | Webhook                           |
+| EMOJI_CREATE                                | 60    | Emoji was created                                         | Emoji                             |
+| EMOJI_UPDATE                                | 61    | Emoji name was updated                                    | Emoji                             |
+| EMOJI_DELETE                                | 62    | Emoji was deleted                                         | Emoji                             |
+| MESSAGE_DELETE                              | 72    | Single message was deleted                                |                                   |
+| MESSAGE_BULK_DELETE                         | 73    | Multiple messages were deleted                            |                                   |
+| MESSAGE_PIN                                 | 74    | Message was pinned to a channel                           |                                   |
+| MESSAGE_UNPIN                               | 75    | Message was unpinned from a channel                       |                                   |
+| INTEGRATION_CREATE                          | 80    | App was added to server                                   | Integration                       |
+| INTEGRATION_UPDATE                          | 81    | App was updated                                           | Integration                       |
+| INTEGRATION_DELETE                          | 82    | App was removed from server                               | Integration                       |
+| STAGE_INSTANCE_CREATE                       | 83    | Stage instance was created                                | Stage Instance                    |
+| STAGE_INSTANCE_UPDATE                       | 84    | Stage instance details were updated                       | Stage Instance                    |
+| STAGE_INSTANCE_DELETE                       | 85    | Stage instance was deleted                                | Stage Instance                    |
+| STICKER_CREATE                              | 90    | Sticker was created                                       | Sticker                           |
+| STICKER_UPDATE                              | 91    | Sticker details were updated                              | Sticker                           |
+| STICKER_DELETE                              | 92    | Sticker was deleted                                       | Sticker                           |
+| GUILD_SCHEDULED_EVENT_CREATE                | 100   | Event was created                                         | Guild Scheduled Event             |
+| GUILD_SCHEDULED_EVENT_UPDATE                | 101   | Event was updated                                         | Guild Scheduled Event             |
+| GUILD_SCHEDULED_EVENT_DELETE                | 102   | Event was cancelled                                       | Guild Scheduled Event             |
+| THREAD_CREATE                               | 110   | Thread was created in a channel                           | Thread                            |
+| THREAD_UPDATE                               | 111   | Thread was updated                                        | Thread                            |
+| THREAD_DELETE                               | 112   | Thread was deleted                                        | Thread                            |
+| APPLICATION_COMMAND_PERMISSION_UPDATE       | 121   | Permissions were updated for a command                    | Command Permission                |
+| SOUNDBOARD_SOUND_CREATE                     | 130   | Soundboard sound was created                              | Soundboard Sound                  |
+| SOUNDBOARD_SOUND_UPDATE                     | 131   | Soundboard sound was updated                              | Soundboard Sound                  |
+| SOUNDBOARD_SOUND_DELETE                     | 132   | Soundboard sound was deleted                              | Soundboard Sound                  |
+| AUTO_MODERATION_RULE_CREATE                 | 140   | Auto Moderation rule was created                          | Auto Moderation Rule              |
+| AUTO_MODERATION_RULE_UPDATE                 | 141   | Auto Moderation rule was updated                          | Auto Moderation Rule              |
+| AUTO_MODERATION_RULE_DELETE                 | 142   | Auto Moderation rule was deleted                          | Auto Moderation Rule              |
+| AUTO_MODERATION_BLOCK_MESSAGE               | 143   | Message was blocked by Auto Moderation                    |                                   |
+| AUTO_MODERATION_FLAG_TO_CHANNEL             | 144   | Message was flagged by Auto Moderation                    |                                   |
+| AUTO_MODERATION_USER_COMMUNICATION_DISABLED | 145   | Member was timed out by Auto Moderation                   |                                   |
+| AUTO_MODERATION_QUARANTINE_USER             | 146   | Member was quarantined by Auto Moderation                 |                                   |
+| CREATOR_MONETIZATION_REQUEST_CREATED        | 150   | Creator monetization request was created                  |                                   |
+| CREATOR_MONETIZATION_TERMS_ACCEPTED         | 151   | Creator monetization terms were accepted                  |                                   |
+| ONBOARDING_PROMPT_CREATE                    | 163   | Guild Onboarding Question was created                     | Onboarding Prompt                 |
+| ONBOARDING_PROMPT_UPDATE                    | 164   | Guild Onboarding Question was updated                     | Onboarding Prompt                 |
+| ONBOARDING_PROMPT_DELETE                    | 165   | Guild Onboarding Question was deleted                     | Onboarding Prompt                 |
+| ONBOARDING_CREATE                           | 166   | Guild Onboarding was created                              | Guild Onboarding                  |
+| ONBOARDING_UPDATE                           | 167   | Guild Onboarding was updated                              | Guild Onboarding                  |
+| HOME_SETTINGS_CREATE                        | 190   | Guild Server Guide was created                            |                                   |
+| HOME_SETTINGS_UPDATE                        | 191   | Guild Server Guide was updated                            |                                   |
+
+### Optional audit entry info
+
+| Field                             | Type      | Description                                                      | Event types                                                                                                                   |
+|-----------------------------------|-----------|------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------|
+| application_id                    | snowflake | ID of the app whose permissions were targeted                    | APPLICATION_COMMAND_PERMISSION_UPDATE                                                                                         |
+| auto_moderation_rule_name         | string    | Name of the Auto Moderation rule that was triggered              | AUTO_MODERATION_BLOCK_MESSAGE, AUTO_MODERATION_FLAG_TO_CHANNEL, AUTO_MODERATION_USER_COMMUNICATION_DISABLED, AUTO_MODERATION_QUARANTINE_USER |
+| auto_moderation_rule_trigger_type | string    | Trigger type of the Auto Moderation rule that was triggered      | AUTO_MODERATION_BLOCK_MESSAGE, AUTO_MODERATION_FLAG_TO_CHANNEL, AUTO_MODERATION_USER_COMMUNICATION_DISABLED, AUTO_MODERATION_QUARANTINE_USER |
+| channel_id                        | snowflake | Channel in which the entities were targeted                      | MEMBER_MOVE, MESSAGE_PIN, MESSAGE_UNPIN, MESSAGE_DELETE, STAGE_INSTANCE_CREATE, STAGE_INSTANCE_UPDATE, STAGE_INSTANCE_DELETE, AUTO_MODERATION_BLOCK_MESSAGE, AUTO_MODERATION_FLAG_TO_CHANNEL, AUTO_MODERATION_USER_COMMUNICATION_DISABLED, AUTO_MODERATION_QUARANTINE_USER |
+| count                             | string    | Number of entities that were targeted                            | MESSAGE_DELETE, MESSAGE_BULK_DELETE, MEMBER_DISCONNECT, MEMBER_MOVE                                                           |
+| delete_member_days                | string    | Number of days after which inactive members were kicked          | MEMBER_PRUNE                                                                                                                  |
+| id                                | snowflake | ID of the overwritten entity                                     | CHANNEL_OVERWRITE_CREATE, CHANNEL_OVERWRITE_UPDATE, CHANNEL_OVERWRITE_DELETE                                                  |
+| members_removed                   | string    | Number of members removed by the prune                           | MEMBER_PRUNE                                                                                                                  |
+| message_id                        | snowflake | ID of the message that was targeted                              | MESSAGE_PIN, MESSAGE_UNPIN                                                                                                    |
+| role_name                         | string    | Name of the role if type is `"0"` (not present if type is `"1"`) | CHANNEL_OVERWRITE_CREATE, CHANNEL_OVERWRITE_UPDATE, CHANNEL_OVERWRITE_DELETE                                                  |
+| type                              | string    | Type of overwritten entity — role (`"0"`) or member (`"1"`)      | CHANNEL_OVERWRITE_CREATE, CHANNEL_OVERWRITE_UPDATE, CHANNEL_OVERWRITE_DELETE                                                  |
+| integration_type                  | string    | The type of integration which performed the action               | MEMBER_KICK, MEMBER_ROLE_UPDATE                                                                                               |
+
+---
+
+## Audit log change object
+
+Many audit log events include a `changes` array in their entry object. The structure of individual changes varies based on the event type.
+
+<Info>
+If `new_value` is not present while `old_value` is, the property has been reset or set to `null`. If `old_value` is not included, the property was previously `null`.
+</Info>
+
+### Audit log change structure
+
+<ResponseField name="new_value" type="mixed">
+  New value of the key. Type matches the object field's type. Optional field.
+</ResponseField>
+
+<ResponseField name="old_value" type="mixed">
+  Old value of the key. Type matches the object field's type. Optional field.
+</ResponseField>
+
+<ResponseField name="key" type="string" required>
+  Name of the changed entity, with a few [exceptions](#audit-log-change-exceptions).
+</ResponseField>
+
+### Audit log change exceptions
+
+For most objects, the change keys correspond to the changed object's fields. The following table details exceptions.
+
+| Object changed         | Change key exceptions                                                  | Change object exceptions                                                                                                                                                                               |
+|------------------------|------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Command Permission     | Snowflake as key                                                       | The `changes` array contains objects with a `key` field representing the entity whose command was affected (role, channel, or user ID), a previous permissions object (`old_value`), and an updated permissions object (`new_value`) |
+| Invite and Invite Metadata | Additional `channel_id` key (instead of `channel.id`)             |                                                                                                                                                                                                        |
+| Partial Role           | `$add` and `$remove` as keys                                           | `new_value` is an array of objects containing the role `id` and `name`                                                                                                                                |
+| Webhook                | `avatar_hash` key (instead of `avatar`)                                |                                                                                                                                                                                                        |
+
+---
+
+## Get guild audit log
+
+<Info>
+`GET /guilds/{guild.id}/audit-logs`
+</Info>
+
+Returns an [audit log](#audit-log-object) object for the guild. Requires the `VIEW_AUDIT_LOG` permission.
+
+The returned list of audit log entries is ordered based on whether you use `before` or `after`:
+
+- **`before`**: List is ordered by entry ID descending (newer entries first).
+- **`after`**: List is reversed and appears in ascending order (older entries first).
+- **Neither**: Defaults to `before` the current timestamp, showing the most recent entries in descending order. Use `after=0` to show the oldest entries instead.
+
+### Query string params
+
+<ParamField query="user_id" type="snowflake">
+  Filter entries to a specific user ID.
+</ParamField>
+
+<ParamField query="action_type" type="integer">
+  Filter entries for a specific [audit log event](#audit-log-events).
+</ParamField>
+
+<ParamField query="before" type="snowflake">
+  Entries with ID less than a specific audit log entry ID.
+</ParamField>
+
+<ParamField query="after" type="snowflake">
+  Entries with ID greater than a specific audit log entry ID.
+</ParamField>
+
+<ParamField query="limit" type="integer" default="50">
+  Maximum number of entries to return (1–100).
+</ParamField>

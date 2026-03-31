@@ -1,0 +1,197 @@
+---
+title: Local Development
+description: Set up a local development environment for Discord Activities, including URL mapping, tunneling, and logging.
+---
+
+## Run Your Application Locally
+
+You can load your application from a localhost port or a custom URL. This URL must support HTTPS to load in the web and desktop Discord clients (HTTPS is not required for mobile).
+
+When loading from localhost, your application's network traffic does not pass through Discord's proxy. This means any requests made by the application must use full URLs rather than [mapped](/developers/activities/development-guides/local-development#url-mapping) paths.
+
+---
+
+## Running Through a Network Tunnel
+
+For the most accurate local development experience, we recommend testing against the Discord proxy. This ensures all URL behaviors match what you will see in production. To do this, use a network tunneling tool such as [cloudflared](https://github.com/cloudflare/cloudflared#installing-cloudflared) to expose your local server.
+
+A typical pattern is for each developer to have their own development-only application. To set up a local tunnel:
+
+<Steps>
+  <Step title="Create a Discord application">
+    Create a new application in the [Discord Developer Portal](https://discord.com/developers/applications).
+  </Step>
+  <Step title="Enable Activities">
+    In your application's settings, enable Activities.
+  </Step>
+  <Step title="Configure URL mapping">
+    Set up the [URL mapping](/developers/activities/development-guides/local-development#url-mapping) for your application.
+  </Step>
+  <Step title="Start your local web server">
+    Start your development server locally.
+  </Step>
+  <Step title="Start the tunnel">
+    Install and run cloudflared, pointing it at your local server.
+  </Step>
+</Steps>
+
+<Info>
+Your local web server can use HTTP. The network tunnel will upgrade the connection to HTTPS automatically.
+</Info>
+
+Start the tunnel with your local server's port (replace `3000` with your actual port):
+
+```bash
+cloudflared tunnel --url http://localhost:3000
+```
+
+Once running, cloudflared will output a public URL:
+
+```
+Your quick Tunnel has been created! Visit it at (it may take some time to be reachable):
+https://funky-jogging-bunny.trycloudflare.com
+```
+
+In the Discord Developer Portal, update the URL mapping for the `/` prefix to `funky-jogging-bunny.trycloudflare.com`.
+
+<Warning>
+If you do not own the domain you are using to host your application (for example, ngrok's free tier), someone else could claim that domain and host a malicious site in its place. If you use a domain you do not own, reset your URL mapping when you are done with the tunnel.
+</Warning>
+
+---
+
+## Running in Production
+
+The production configuration is nearly identical to local development:
+
+<Steps>
+  <Step title="Create an application">
+    Create a new application in the [Discord Developer Portal](https://discord.com/developers/applications) if you haven't already.
+  </Step>
+  <Step title="Enable Activities">
+    Enable Activities in your app's settings.
+  </Step>
+  <Step title="Configure URL mapping">
+    Set up [URL Mapping](/developers/activities/development-guides/local-development#url-mapping) with your production server's URL at the `/` route.
+  </Step>
+  <Step title="Launch the Activity">
+    Launch the Activity from the Discord client. Application URL Override should not be enabled in production.
+  </Step>
+</Steps>
+
+---
+
+## Launch Your Application from the Discord Client
+
+You can see and launch all Activities owned by you or any team you are a member of via the Developer Activity Shelf. Note that an Activity will not appear on the current platform (web, iOS, Android) unless you have checked that platform in [Settings > Supported Platforms](https://discord.com/developers/applications/select/embedded/settings) in the developer portal.
+
+<Tabs>
+  <Tab title="Web">
+    1. Go to **User Settings > App Settings > Advanced** and toggle on `Developer Mode`
+    2. Enter a voice channel
+    3. From the RTC Panel or Center Control Tray, click the **Rocket Button** to open the Activity shelf
+    4. Click your Activity to launch it
+  </Tab>
+  <Tab title="Mobile">
+    1. From your User Profile, tap **Appearance** and toggle on `Developer Mode`
+    2. Enter a voice channel
+    3. Click your Activity to launch it
+  </Tab>
+</Tabs>
+
+---
+
+## URL Mapping
+
+Activities in Discord are sandboxed through a Discord proxy. This hides users' IP addresses, your application's IP addresses, and blocks requests to known malicious endpoints. As an application owner, you can configure the proxy to allow network requests to external endpoints.
+
+Because your application is sandboxed, it cannot make network requests to arbitrary external URLs. To access `https://some-api.com`, create a URL mapping with `PREFIX` set to `/api` and `TARGET` set to `some-api.com`. Requests from your Activity to `/api` will then be forwarded through the Discord proxy to `some-api.com`.
+
+### How to Set a URL Mapping
+
+Click [**Activities > URL Mappings**](https://discord.com/developers/applications/select/embedded/url-mappings) in the developer portal and set the prefix and target values.
+
+### Prefix/Target Formatting Rules
+
+- Do not include a protocol in the target URL. Use `your-url.com`, not `https://your-url.com`.
+- Parameter matching is supported for subdomains:
+
+  | PREFIX | TARGET |
+  |--------|--------|
+  | `/google/{subdomain}` | `{subdomain}.google.com` |
+
+- Targets must point to a directory, not a specific file (e.g., `example.com/index.html` is not supported).
+- When multiple prefixes share the same initial path, place the longer prefix first. For example, place `/foo/bar` before `/foo`, or requests to `/foo/bar` will never be reached.
+
+### CSP Exceptions
+
+The following URLs are exempt from the sandbox and can be reached without a URL mapping:
+
+- `https://discord.com/api/`
+- `https://canary.discord.com/api/`
+- `https://ptb.discord.com/api/`
+- `https://cdn.discordapp.com/attachments/`
+- `https://cdn.discordapp.com/avatars/`
+- `https://cdn.discordapp.com/icons/`
+- `https://media.discordapp.net/attachments/`
+- `https://media.discordapp.net/avatars/`
+- `https://media.discordapp.net/icons/`
+
+---
+
+## Logging
+
+By default, the SDK forwards all `console.log`, `warn`, `error`, `info`, and `debug` events from your app to the Discord client.
+
+### Viewing Logs on Desktop
+
+Desktop logs are visible in the browser's Developer Tools console. The Public Test Build (PTB) Discord client also supports inspecting logs via **View > Developer > Toggle Developer Tools**. Download PTB at [discord.com/downloads](https://discord.com/downloads).
+
+### Viewing Logs on Mobile
+
+<Steps>
+  <Step title="Enable Developer Mode">
+    In User Settings, tap **Appearance** and toggle on `Developer Mode`.
+  </Step>
+  <Step title="Open Debug Logs">
+    Navigate to **User Settings > DEV ONLY > Debug Logs**.
+  </Step>
+</Steps>
+
+#### Filtering Application Logs
+
+Inside Debug Logs, search for your application's logs using:
+
+- `RpcApplicationLogger`
+- Your Application ID
+
+Each log line is formatted as: `[RpcApplicationLogger] <application-id> - message`
+
+#### Sharing Logs from Mobile
+
+With Developer Mode enabled, you can share logs from a voice channel. Swipe up from the bottom to see expanded voice controls, then tap **Share Application Logs**.
+
+### Disabling Log Forwarding
+
+To prevent logs from being forwarded to the browser:
+
+```javascript
+import {DiscordSDK} from '@discord/embedded-app-sdk';
+const discordSdk = new DiscordSDK(clientId, {
+  disableConsoleLogOverride: true,
+});
+```
+
+### Forwarding Specific Log Messages
+
+Use the `captureLog` command to forward specific log messages:
+
+```javascript
+import {DiscordSDK} from '@discord/embedded-app-sdk';
+const discordSdk = new DiscordSDK(clientId);
+await discordSdk.ready();
+discordSdk.commands.captureLog({
+  level: 'log',
+  message: 'This is my log message!',
+});
+```

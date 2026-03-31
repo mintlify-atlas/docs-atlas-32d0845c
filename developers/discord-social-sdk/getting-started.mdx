@@ -1,0 +1,72 @@
+---
+title: Getting started with the Discord Social SDK
+sidebarTitle: Getting started
+description: Quick start guide for integrating the Discord Social SDK into your game.
+---
+
+The Discord Social SDK allows you to integrate Discord social features into your game. With the Discord Social SDK, you can offer a seamless social experience for your players, allowing them to connect with their friends and communities on Discord without leaving your game.
+
+If this is your first time learning about the Discord Social SDK, check out the [Overview](/developers/discord-social-sdk/overview) and [Core Concepts](/developers/discord-social-sdk/core-concepts) pages for more information on what the SDK can do and how it can benefit your game.
+
+## Let's get started
+
+Select a platform to get started. If you are unsure which platform to choose, start with the C++ guide to familiarize yourself with the SDK's core concepts.
+
+<CardGroup cols={1}>
+  <Card title="Standalone C++" href="/developers/discord-social-sdk/getting-started/using-c++">
+    For use with custom engines or standalone applications.
+  </Card>
+  <Card title="Unity" href="/developers/discord-social-sdk/getting-started/using-unity">
+    For use with Unity 2021.3 or later.
+  </Card>
+  <Card title="Unreal Engine" href="/developers/discord-social-sdk/getting-started/using-unreal-engine">
+    For use with Unreal Engine.
+  </Card>
+</CardGroup>
+
+<Info>
+To see the complete list of currently supported platforms and minimum version requirements, check out the [Platform Compatibility](/developers/discord-social-sdk/core-concepts) section.
+</Info>
+
+---
+
+## What you'll build
+
+By the end of the getting started guide, your application will be able to:
+
+- Authenticate users with Discord using OAuth2
+- Set up logging and status monitoring
+- Start the SDK and establish a connection
+- Retrieve the player's Discord friends list
+- Set the player's rich presence for your game
+
+---
+
+## Before you begin
+
+All getting started guides require:
+
+1. **A Discord account** — Register at [discord.com](https://discord.com) if you don't have one.
+2. **A Discord application** — Create one in the [Discord Developer Portal](https://discord.com/developers/applications).
+3. **OAuth2 redirect URIs configured** — Add the appropriate redirect URI for your platform in the Developer Portal's OAuth2 tab.
+
+| Platform | Redirect URI |
+|----------|-------------|
+| Desktop | `http://127.0.0.1/callback` |
+| Mobile | `discord-APP_ID:/authorize/callback` (replace `APP_ID` with your application ID) |
+
+4. **SDK downloaded** — Download the Social SDK from the [Downloads](https://discord.com/developers/applications/select/social-sdk/downloads) page in your application's settings.
+
+---
+
+## Next steps
+
+After completing a platform getting started guide, you can implement features such as a unified friend list, rich presence, lobby management, and more. See the [Development Guides](/developers/discord-social-sdk/development-guides/account-linking-with-discord) for detailed implementation instructions for each feature.
+
+---
+
+## Change log
+
+| Date | Changes |
+|------|---------|
+| March 17, 2025 | Initial release |

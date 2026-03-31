@@ -1,0 +1,798 @@
+---
+title: Channel
+description: Reference for Discord channel objects, types, and management endpoints.
+---
+
+Channels represent a guild or DM channel within Discord. They can contain messages, members, and various types of content depending on the channel type.
+
+## Channel object
+
+### Channel structure
+
+<ResponseField name="id" type="snowflake" required>
+  The id of this channel
+</ResponseField>
+
+<ResponseField name="type" type="integer" required>
+  The [type of channel](/developers/resources/channel#channel-types)
+</ResponseField>
+
+<ResponseField name="guild_id" type="snowflake">
+  The id of the guild (may be missing for some channel objects received over gateway guild dispatches)
+</ResponseField>
+
+<ResponseField name="position" type="integer">
+  Sorting position of the channel (channels with the same position are sorted by id)
+</ResponseField>
+
+<ResponseField name="permission_overwrites" type="array of overwrite objects">
+  Explicit permission overwrites for members and roles
+</ResponseField>
+
+<ResponseField name="name" type="?string">
+  The name of the channel (1-100 characters)
+</ResponseField>
+
+<ResponseField name="topic" type="?string">
+  The channel topic (0-4096 characters for `GUILD_FORUM` and `GUILD_MEDIA` channels, 0-1024 characters for all others)
+</ResponseField>
+
+<ResponseField name="nsfw" type="boolean">
+  Whether the channel is age-restricted
+</ResponseField>
+
+<ResponseField name="last_message_id" type="?snowflake">
+  The id of the last message sent in this channel (may not point to an existing or valid message)
+</ResponseField>
+
+<ResponseField name="bitrate" type="integer">
+  The bitrate (in bits per second) of the voice channel
+</ResponseField>
+
+<ResponseField name="user_limit" type="integer">
+  The user limit of the voice channel
+</ResponseField>
+
+<ResponseField name="rate_limit_per_user" type="integer">
+  Amount of seconds a user has to wait before sending another message (0-21600); bots, as well as users with the permission `BYPASS_SLOWMODE`, are unaffected. Also applies to thread creation.
+</ResponseField>
+
+<ResponseField name="recipients" type="array of user objects">
+  The recipients of the DM
+</ResponseField>
+
+<ResponseField name="icon" type="?string">
+  Icon hash of the group DM
+</ResponseField>
+
+<ResponseField name="owner_id" type="snowflake">
+  ID of the creator of the group DM or thread
+</ResponseField>
+
+<ResponseField name="application_id" type="snowflake">
+  Application id of the group DM creator if it is bot-created
+</ResponseField>
+
+<ResponseField name="managed" type="boolean">
+  For group DM channels: whether the channel is managed by an application via the `gdm.join` OAuth2 scope
+</ResponseField>
+
+<ResponseField name="parent_id" type="?snowflake">
+  For guild channels: id of the parent category for a channel (each parent category can contain up to 50 channels); for threads: id of the text channel this thread was created
+</ResponseField>
+
+<ResponseField name="last_pin_timestamp" type="?ISO8601 timestamp">
+  When the last pinned message was pinned. May be `null` in events such as `GUILD_CREATE` when a message is not pinned.
+</ResponseField>
+
+<ResponseField name="rtc_region" type="?string">
+  Voice region id for the voice channel, automatic when set to null
+</ResponseField>
+
+<ResponseField name="video_quality_mode" type="integer">
+  The camera [video quality mode](/developers/resources/channel#video-quality-modes) of the voice channel, 1 when not present
+</ResponseField>
+
+<ResponseField name="message_count" type="integer">
+  Number of messages (not including the initial message or deleted messages) in a thread. For threads created before July 1, 2022, the message count is inaccurate when it's greater than 50.
+</ResponseField>
+
+<ResponseField name="member_count" type="integer">
+  An approximate count of users in a thread, stops counting at 50
+</ResponseField>
+
+<ResponseField name="thread_metadata" type="thread metadata object">
+  Thread-specific fields not needed by other channels
+</ResponseField>
+
+<ResponseField name="member" type="thread member object">
+  Thread member object for the current user, if they have joined the thread, only included on certain API endpoints
+</ResponseField>
+
+<ResponseField name="default_auto_archive_duration" type="integer">
+  Default duration, copied onto newly created threads, in minutes. Threads will stop showing in the channel list after the specified period of inactivity. Can be set to: 60, 1440, 4320, 10080.
+</ResponseField>
+
+<ResponseField name="permissions" type="string">
+  Computed permissions for the invoking user in the channel, including overwrites, only included when part of the `resolved` data received on an interaction
+</ResponseField>
+
+<ResponseField name="flags" type="integer">
+  [Channel flags](/developers/resources/channel#channel-flags) combined as a bitfield
+</ResponseField>
+
+<ResponseField name="total_message_sent" type="integer">
+  Number of messages ever sent in a thread; similar to `message_count` on message creation, but will not decrement when a message is deleted
+</ResponseField>
+
+<ResponseField name="available_tags" type="array of tag objects">
+  The set of tags that can be used in a `GUILD_FORUM` or a `GUILD_MEDIA` channel
+</ResponseField>
+
+<ResponseField name="applied_tags" type="array of snowflakes">
+  The IDs of the set of tags that have been applied to a thread in a `GUILD_FORUM` or a `GUILD_MEDIA` channel
+</ResponseField>
+
+<ResponseField name="default_reaction_emoji" type="?default reaction object">
+  The emoji to show in the add reaction button on a thread in a `GUILD_FORUM` or a `GUILD_MEDIA` channel
+</ResponseField>
+
+<ResponseField name="default_thread_rate_limit_per_user" type="integer">
+  The initial `rate_limit_per_user` to set on newly created threads in a channel. Copied to the thread at creation time and does not live update.
+</ResponseField>
+
+<ResponseField name="default_sort_order" type="?integer">
+  The [default sort order type](/developers/resources/channel#sort-order-types) used to order posts in `GUILD_FORUM` and `GUILD_MEDIA` channels
+</ResponseField>
+
+<ResponseField name="default_forum_layout" type="integer">
+  The [default forum layout view](/developers/resources/channel#forum-layout-types) used to display posts in `GUILD_FORUM` channels. Defaults to `0`, which indicates a layout view has not been set.
+</ResponseField>
+
+## Channel types
+
+<Warning>
+Types 10, 11, and 12 are only available in API v9 and above.
+</Warning>
+
+| Type                | ID | Description                                                                                    |
+|---------------------|----|------------------------------------------------------------------------------------------------|
+| `GUILD_TEXT`        | 0  | A text channel within a server                                                                 |
+| `DM`                | 1  | A direct message between users                                                                 |
+| `GUILD_VOICE`       | 2  | A voice channel within a server                                                                |
+| `GROUP_DM`          | 3  | A direct message between multiple users                                                        |
+| `GUILD_CATEGORY`    | 4  | An organizational category that contains up to 50 channels                                     |
+| `GUILD_ANNOUNCEMENT`| 5  | A channel that users can follow and crosspost into their own server                            |
+| `ANNOUNCEMENT_THREAD` | 10 | A temporary sub-channel within a `GUILD_ANNOUNCEMENT` channel                               |
+| `PUBLIC_THREAD`     | 11 | A temporary sub-channel within a `GUILD_TEXT` or `GUILD_FORUM` channel                        |
+| `PRIVATE_THREAD`    | 12 | A temporary sub-channel within a `GUILD_TEXT` channel, only viewable by those invited and those with `MANAGE_THREADS` |
+| `GUILD_STAGE_VOICE` | 13 | A voice channel for hosting events with an audience                                            |
+| `GUILD_DIRECTORY`   | 14 | The channel in a hub containing the listed servers                                             |
+| `GUILD_FORUM`       | 15 | Channel that can only contain threads                                                          |
+| `GUILD_MEDIA`       | 16 | Channel that can only contain threads, similar to `GUILD_FORUM` channels                       |
+
+## Video quality modes
+
+| Mode   | Value | Description                                         |
+|--------|-------|-----------------------------------------------------|
+| `AUTO` | 1     | Discord chooses the quality for optimal performance |
+| `FULL` | 2     | 720p                                                |
+
+## Channel flags
+
+| Flag                          | Value     | Description                                                                                          |
+|-------------------------------|-----------|------------------------------------------------------------------------------------------------------|
+| `PINNED`                      | `1 << 1`  | This thread is pinned to the top of its parent `GUILD_FORUM` or `GUILD_MEDIA` channel               |
+| `REQUIRE_TAG`                 | `1 << 4`  | Whether a tag is required to be specified when creating a thread in a `GUILD_FORUM` or `GUILD_MEDIA` channel |
+| `HIDE_MEDIA_DOWNLOAD_OPTIONS` | `1 << 15` | When set hides the embedded media download options. Available only for media channels                |
+
+## Sort order types
+
+| Flag              | Value | Description                                                    |
+|-------------------|-------|----------------------------------------------------------------|
+| `LATEST_ACTIVITY` | 0     | Sort forum posts by activity                                   |
+| `CREATION_DATE`   | 1     | Sort forum posts by creation time (from most recent to oldest) |
+
+## Forum layout types
+
+| Flag           | Value | Description                               |
+|----------------|-------|-------------------------------------------|
+| `NOT_SET`      | 0     | No default has been set for forum channel |
+| `LIST_VIEW`    | 1     | Display posts as a list                   |
+| `GALLERY_VIEW` | 2     | Display posts as a collection of tiles    |
+
+## Channel examples
+
+<AccordionGroup>
+  <Accordion title="Guild text channel">
+
+```json
+{
+  "id": "41771983423143937",
+  "guild_id": "41771983423143937",
+  "name": "general",
+  "type": 0,
+  "position": 6,
+  "permission_overwrites": [],
+  "rate_limit_per_user": 2,
+  "nsfw": true,
+  "topic": "24/7 chat about how to gank Mike #2",
+  "last_message_id": "155117677105512449",
+  "parent_id": "399942396007890945",
+  "default_auto_archive_duration": 60
+}
+```
+
+  </Accordion>
+  <Accordion title="Guild announcement channel">
+
+```json
+{
+  "id": "41771983423143937",
+  "guild_id": "41771983423143937",
+  "name": "important-news",
+  "type": 5,
+  "position": 6,
+  "permission_overwrites": [],
+  "nsfw": true,
+  "topic": "Rumors about Half Life 3",
+  "last_message_id": "155117677105512449",
+  "parent_id": "399942396007890945",
+  "default_auto_archive_duration": 60
+}
+```
+
+  </Accordion>
+  <Accordion title="DM channel">
+
+```json
+{
+  "last_message_id": "3343820033257021450",
+  "type": 1,
+  "id": "319674150115610528",
+  "recipients": [
+    {
+      "username": "test",
+      "discriminator": "9999",
+      "id": "82198898841029460",
+      "avatar": "33ecab261d4681afa4d85a04691c4a01"
+    }
+  ]
+}
+```
+
+  </Accordion>
+  <Accordion title="Thread channel">
+
+```json
+{
+  "id": "41771983423143937",
+  "guild_id": "41771983423143937",
+  "parent_id": "41771983423143937",
+  "owner_id": "41771983423143937",
+  "name": "don't buy dota-2",
+  "type": 11,
+  "last_message_id": "155117677105512449",
+  "message_count": 1,
+  "member_count": 5,
+  "rate_limit_per_user": 2,
+  "thread_metadata": {
+    "archived": false,
+    "auto_archive_duration": 1440,
+    "archive_timestamp": "2021-04-12T23:40:39.855793+00:00",
+    "locked": false
+  },
+  "total_message_sent": 1
+}
+```
+
+  </Accordion>
+</AccordionGroup>
+
+## Followed channel object
+
+### Followed channel structure
+
+<ResponseField name="channel_id" type="snowflake" required>
+  Source channel id
+</ResponseField>
+
+<ResponseField name="webhook_id" type="snowflake" required>
+  Created target webhook id
+</ResponseField>
+
+## Overwrite object
+
+See [permissions](/developers/topics/permissions#permissions) for more information about the `allow` and `deny` fields.
+
+<ResponseField name="id" type="snowflake" required>
+  Role or user id
+</ResponseField>
+
+<ResponseField name="type" type="integer" required>
+  Either `0` (role) or `1` (member)
+</ResponseField>
+
+<ResponseField name="allow" type="string" required>
+  Permission bit set
+</ResponseField>
+
+<ResponseField name="deny" type="string" required>
+  Permission bit set
+</ResponseField>
+
+## Thread metadata object
+
+The thread metadata object contains thread-specific channel fields that are not needed by other channel types.
+
+<ResponseField name="archived" type="boolean" required>
+  Whether the thread is archived
+</ResponseField>
+
+<ResponseField name="auto_archive_duration" type="integer" required>
+  The thread will stop showing in the channel list after `auto_archive_duration` minutes of inactivity. Can be set to: 60, 1440, 4320, 10080.
+</ResponseField>
+
+<ResponseField name="archive_timestamp" type="ISO8601 timestamp" required>
+  Timestamp when the thread's archive status was last changed, used for calculating recent activity
+</ResponseField>
+
+<ResponseField name="locked" type="boolean" required>
+  Whether the thread is locked; when a thread is locked, only users with `MANAGE_THREADS` can unarchive it
+</ResponseField>
+
+<ResponseField name="invitable" type="boolean">
+  Whether non-moderators can add other non-moderators to a thread; only available on private threads
+</ResponseField>
+
+<ResponseField name="create_timestamp" type="?ISO8601 timestamp">
+  Timestamp when the thread was created; only populated for threads created after 2022-01-09
+</ResponseField>
+
+## Thread member object
+
+A thread member object contains information about a user that has joined a thread.
+
+<ResponseField name="id" type="snowflake">
+  ID of the thread. Omitted on the member sent within each thread in the `GUILD_CREATE` event.
+</ResponseField>
+
+<ResponseField name="user_id" type="snowflake">
+  ID of the user. Omitted on the member sent within each thread in the `GUILD_CREATE` event.
+</ResponseField>
+
+<ResponseField name="join_timestamp" type="ISO8601 timestamp" required>
+  Time the user last joined the thread
+</ResponseField>
+
+<ResponseField name="flags" type="integer" required>
+  Any user-thread settings, currently only used for notifications
+</ResponseField>
+
+<ResponseField name="member" type="guild member object">
+  Additional information about the user. Only present when `with_member` is set to `true` when calling List Thread Members or Get Thread Member.
+</ResponseField>
+
+## Default reaction object
+
+An object that specifies the emoji to use as the default way to react to a forum post. Exactly one of `emoji_id` and `emoji_name` must be set.
+
+<ResponseField name="emoji_id" type="?snowflake" required>
+  The id of a guild's custom emoji
+</ResponseField>
+
+<ResponseField name="emoji_name" type="?string" required>
+  The unicode character of the emoji
+</ResponseField>
+
+## Forum tag object
+
+An object that represents a tag that is able to be applied to a thread in a `GUILD_FORUM` or `GUILD_MEDIA` channel.
+
+<Info>
+When updating a `GUILD_FORUM` or a `GUILD_MEDIA` channel, tag objects in `available_tags` only require the `name` field.
+</Info>
+
+<ResponseField name="id" type="snowflake" required>
+  The id of the tag
+</ResponseField>
+
+<ResponseField name="name" type="string" required>
+  The name of the tag (0-20 characters)
+</ResponseField>
+
+<ResponseField name="moderated" type="boolean" required>
+  Whether this tag can only be added to or removed from threads by a member with the `MANAGE_THREADS` permission
+</ResponseField>
+
+<ResponseField name="emoji_id" type="?snowflake" required>
+  The id of a guild's custom emoji. At most one of `emoji_id` and `emoji_name` may be set to a non-null value.
+</ResponseField>
+
+<ResponseField name="emoji_name" type="?string" required>
+  The unicode character of the emoji. At most one of `emoji_id` and `emoji_name` may be set to a non-null value.
+</ResponseField>
+
+---
+
+## Get channel
+
+<Note>
+**GET** `/channels/{channel.id}`
+</Note>
+
+Get a channel by ID. Returns a [channel](/developers/resources/channel#channel-object) object. If the channel is a thread, a [thread member](/developers/resources/channel#thread-member-object) object is included in the returned result.
+
+## Modify channel
+
+<Note>
+**PATCH** `/channels/{channel.id}`
+</Note>
+
+Update a channel's settings. Returns a [channel](/developers/resources/channel#channel-object) on success.
+
+<Note>
+All parameters to this endpoint are optional.
+</Note>
+
+<Info>
+This endpoint supports the `X-Audit-Log-Reason` header.
+</Info>
+
+### JSON params (group DM)
+
+<ParamField body="name" type="string">
+  1-100 character channel name
+</ParamField>
+
+<ParamField body="icon" type="binary">
+  Base64 encoded icon
+</ParamField>
+
+### JSON params (guild channel)
+
+Requires the `MANAGE_CHANNELS` permission. Only permissions your bot has in the guild or parent channel can be allowed/denied.
+
+| Field                              | Type       | Description                                                           | Channel type                                   |
+|------------------------------------|------------|-----------------------------------------------------------------------|------------------------------------------------|
+| `name`                             | string     | 1-100 character channel name                                          | All                                            |
+| `type`                             | integer    | Type of channel; only conversion between text and announcement is supported | Text, Announcement                      |
+| `position`                         | ?integer   | Position of the channel in the left-hand listing                      | All                                            |
+| `topic`                            | ?string    | 0-1024 character channel topic (0-4096 for forum/media channels)      | Text, Announcement, Forum, Media               |
+| `nsfw`                             | ?boolean   | Whether the channel is age-restricted                                 | Text, Voice, Announcement, Stage, Forum, Media |
+| `rate_limit_per_user`              | ?integer   | Slowmode in seconds (0-21600)                                         | Text, Voice, Stage, Forum, Media               |
+| `bitrate`                          | ?integer   | Bitrate in bits per second; min 8000                                  | Voice, Stage                                   |
+| `user_limit`                       | ?integer   | User limit, max 99 for voice and 10,000 for stage (0 = no limit)      | Voice, Stage                                   |
+| `permission_overwrites`            | ?array     | Channel or category-specific permissions                              | All                                            |
+| `parent_id`                        | ?snowflake | ID of the new parent category                                         | Text, Voice, Announcement, Stage, Forum, Media |
+| `rtc_region`                       | ?string    | Voice region id, automatic when null                                  | Voice, Stage                                   |
+| `video_quality_mode`               | ?integer   | Camera video quality mode                                             | Voice, Stage                                   |
+| `default_auto_archive_duration`    | ?integer   | Default thread auto-archive duration in minutes                       | Text, Announcement, Forum, Media               |
+| `flags`                            | integer    | Channel flags bitfield                                                | Forum, Media                                   |
+| `available_tags`                   | array      | Set of tags that can be used; limited to 20                           | Forum, Media                                   |
+| `default_reaction_emoji`           | ?object    | Emoji to show in the add reaction button on a thread                  | Forum, Media                                   |
+| `default_thread_rate_limit_per_user` | integer  | Initial `rate_limit_per_user` for newly created threads               | Text, Forum, Media                             |
+| `default_sort_order`               | ?integer   | Default sort order type                                               | Forum, Media                                   |
+| `default_forum_layout`             | integer    | Default forum layout type                                             | Forum                                          |
+
+### JSON params (thread)
+
+| Field                   | Type      | Description                                                                                      |
+|-------------------------|-----------|--------------------------------------------------------------------------------------------------|
+| `name`                  | string    | 1-100 character channel name                                                                     |
+| `archived`              | boolean   | Whether the thread is archived                                                                   |
+| `auto_archive_duration` | integer   | Auto-archive duration in minutes: 60, 1440, 4320, 10080                                         |
+| `locked`                | boolean   | Whether the thread is locked                                                                     |
+| `invitable`             | boolean   | Whether non-moderators can add other non-moderators to a thread; only on private threads         |
+| `rate_limit_per_user`   | ?integer  | Slowmode in seconds (0-21600)                                                                    |
+| `flags`                 | integer   | Channel flags bitfield; `PINNED` can only be set for threads in forum and media channels         |
+| `applied_tags`          | array     | IDs of the set of tags applied to a thread in forum/media channels; limited to 5                 |
+
+## Delete/close channel
+
+<Note>
+**DELETE** `/channels/{channel.id}`
+</Note>
+
+Delete a channel, or close a private message. Requires `MANAGE_CHANNELS` permission for the guild, or `MANAGE_THREADS` if the channel is a thread.
+
+<Warning>
+Deleting a guild channel cannot be undone. Use this with caution, as it is impossible to undo this action when performed on a guild channel.
+</Warning>
+
+<Info>
+For Community guilds, the Rules or Guidelines channel and the Community Updates channel cannot be deleted.
+</Info>
+
+## Edit channel permissions
+
+<Note>
+**PUT** `/channels/{channel.id}/permissions/{overwrite.id}`
+</Note>
+
+Edit the channel permission overwrites for a user or role in a channel. Requires the `MANAGE_ROLES` permission. Returns a 204 empty response on success.
+
+### JSON params
+
+<ParamField body="allow" type="string?">
+  The bitwise value of all allowed permissions (default `"0"`)
+</ParamField>
+
+<ParamField body="deny" type="string?">
+  The bitwise value of all disallowed permissions (default `"0"`)
+</ParamField>
+
+<ParamField body="type" type="integer" required>
+  `0` for a role or `1` for a member
+</ParamField>
+
+## Get channel invites
+
+<Note>
+**GET** `/channels/{channel.id}/invites`
+</Note>
+
+Returns a list of invite objects (with invite metadata) for the channel. Only usable for guild channels. Requires the `MANAGE_CHANNELS` permission.
+
+## Create channel invite
+
+<Note>
+**POST** `/channels/{channel.id}/invites`
+</Note>
+
+Create a new invite object for the channel. Only usable for guild channels. Requires the `CREATE_INSTANT_INVITE` permission. Returns an invite object.
+
+<Info>
+This endpoint supports the `X-Audit-Log-Reason` header.
+</Info>
+
+### JSON/form params
+
+<ParamField body="max_age" type="integer" default="86400">
+  Duration of invite in seconds before expiry, or 0 for never. Between 0 and 604800 (7 days).
+</ParamField>
+
+<ParamField body="max_uses" type="integer" default="0">
+  Max number of uses or 0 for unlimited. Between 0 and 100.
+</ParamField>
+
+<ParamField body="temporary" type="boolean" default="false">
+  Whether this invite only grants temporary membership
+</ParamField>
+
+<ParamField body="unique" type="boolean" default="false">
+  If true, don't try to reuse a similar invite (useful for creating many unique one-time use invites)
+</ParamField>
+
+<ParamField body="target_type" type="integer">
+  The type of target for this voice channel invite
+</ParamField>
+
+<ParamField body="target_user_id" type="snowflake">
+  The id of the user whose stream to display for this invite, required if `target_type` is 1
+</ParamField>
+
+<ParamField body="target_application_id" type="snowflake">
+  The id of the embedded application to open for this invite, required if `target_type` is 2
+</ParamField>
+
+## Delete channel permission
+
+<Note>
+**DELETE** `/channels/{channel.id}/permissions/{overwrite.id}`
+</Note>
+
+Delete a channel permission overwrite for a user or role in a channel. Requires the `MANAGE_ROLES` permission. Returns a 204 empty response on success.
+
+## Follow announcement channel
+
+<Note>
+**POST** `/channels/{channel.id}/followers`
+</Note>
+
+Follow an Announcement Channel to send messages to a target channel. Requires the `MANAGE_WEBHOOKS` permission in the target channel. Returns a [followed channel](/developers/resources/channel#followed-channel-object) object.
+
+### JSON params
+
+<ParamField body="webhook_channel_id" type="snowflake" required>
+  ID of target channel
+</ParamField>
+
+## Trigger typing indicator
+
+<Note>
+**POST** `/channels/{channel.id}/typing`
+</Note>
+
+Post a typing indicator for the specified channel, which expires after 10 seconds. Returns a 204 empty response on success.
+
+<Info>
+Generally bots should not use this route. However, if a bot is responding to a command and expects the computation to take a few seconds, this endpoint may be called to let the user know that the bot is processing their message.
+</Info>
+
+## Start thread from message
+
+<Note>
+**POST** `/channels/{channel.id}/messages/{message.id}/threads`
+</Note>
+
+Creates a new thread from an existing message. Returns a [channel](/developers/resources/channel#channel-object) on success.
+
+When called on a `GUILD_TEXT` channel, creates a `PUBLIC_THREAD`. When called on a `GUILD_ANNOUNCEMENT` channel, creates an `ANNOUNCEMENT_THREAD`.
+
+### JSON params
+
+<ParamField body="name" type="string" required>
+  1-100 character channel name
+</ParamField>
+
+<ParamField body="auto_archive_duration" type="integer">
+  The thread will stop showing in the channel list after `auto_archive_duration` minutes of inactivity. Can be set to: 60, 1440, 4320, 10080.
+</ParamField>
+
+<ParamField body="rate_limit_per_user" type="?integer">
+  Amount of seconds a user has to wait before sending another message (0-21600)
+</ParamField>
+
+## Start thread without message
+
+<Note>
+**POST** `/channels/{channel.id}/threads`
+</Note>
+
+Creates a new thread that is not connected to an existing message. Returns a [channel](/developers/resources/channel#channel-object) on success.
+
+### JSON params
+
+<ParamField body="name" type="string" required>
+  1-100 character channel name
+</ParamField>
+
+<ParamField body="auto_archive_duration" type="integer">
+  Auto-archive duration in minutes: 60, 1440, 4320, 10080
+</ParamField>
+
+<ParamField body="type" type="integer">
+  The type of thread to create. Currently defaults to `PRIVATE_THREAD`.
+</ParamField>
+
+<ParamField body="invitable" type="boolean">
+  Whether non-moderators can add other non-moderators to a thread; only available when creating a private thread
+</ParamField>
+
+<ParamField body="rate_limit_per_user" type="?integer">
+  Amount of seconds a user has to wait before sending another message (0-21600)
+</ParamField>
+
+## Start thread in forum or media channel
+
+<Note>
+**POST** `/channels/{channel.id}/threads`
+</Note>
+
+Creates a new thread in a forum or a media channel, and sends a message within the created thread. Returns a [channel](/developers/resources/channel#channel-object) object with a nested message object on success.
+
+<Warning>
+Discord may strip certain characters from message content. If you are passing user-generated strings into message content, consider sanitizing the data to prevent unexpected behavior.
+</Warning>
+
+### JSON/form params
+
+<ParamField body="name" type="string" required>
+  1-100 character channel name
+</ParamField>
+
+<ParamField body="auto_archive_duration" type="integer">
+  Duration in minutes to automatically archive the thread after recent activity: 60, 1440, 4320, 10080
+</ParamField>
+
+<ParamField body="rate_limit_per_user" type="?integer">
+  Slowmode in seconds (0-21600)
+</ParamField>
+
+<ParamField body="message" type="forum thread message params object" required>
+  Contents of the first message in the forum/media thread
+</ParamField>
+
+<ParamField body="applied_tags" type="array of snowflakes">
+  The IDs of the set of tags that have been applied to a thread
+</ParamField>
+
+## Thread member endpoints
+
+<CardGroup cols={2}>
+  <Card title="Join Thread" icon="plus">
+    **PUT** `/channels/{channel.id}/thread-members/@me`
+
+    Adds the current user to a thread.
+  </Card>
+  <Card title="Add Thread Member" icon="user-plus">
+    **PUT** `/channels/{channel.id}/thread-members/{user.id}`
+
+    Adds another member to a thread. Requires the ability to send messages in the thread.
+  </Card>
+  <Card title="Leave Thread" icon="minus">
+    **DELETE** `/channels/{channel.id}/thread-members/@me`
+
+    Removes the current user from a thread.
+  </Card>
+  <Card title="Remove Thread Member" icon="user-minus">
+    **DELETE** `/channels/{channel.id}/thread-members/{user.id}`
+
+    Removes another member from a thread. Requires `MANAGE_THREADS` permission.
+  </Card>
+</CardGroup>
+
+## Get thread member
+
+<Note>
+**GET** `/channels/{channel.id}/thread-members/{user.id}`
+</Note>
+
+Returns a [thread member](/developers/resources/channel#thread-member-object) object for the specified user if they are a member of the thread.
+
+### Query string params
+
+<ParamField query="with_member" type="boolean">
+  Whether to include a guild member object for the thread member
+</ParamField>
+
+## List thread members
+
+<Note>
+**GET** `/channels/{channel.id}/thread-members`
+</Note>
+
+Returns array of [thread members](/developers/resources/channel#thread-member-object) objects that are members of the thread.
+
+<Warning>
+This endpoint is restricted according to whether the `GUILD_MEMBERS` Privileged Intent is enabled for your application.
+</Warning>
+
+### Query string params
+
+<ParamField query="with_member" type="boolean">
+  Whether to include a guild member object for each thread member
+</ParamField>
+
+<ParamField query="after" type="snowflake">
+  Get thread members after this user ID
+</ParamField>
+
+<ParamField query="limit" type="integer" default="100">
+  Max number of thread members to return (1-100)
+</ParamField>
+
+## List public archived threads
+
+<Note>
+**GET** `/channels/{channel.id}/threads/archived/public`
+</Note>
+
+Returns archived threads in the channel that are public. Threads are ordered by `archive_timestamp`, in descending order. Requires the `READ_MESSAGE_HISTORY` permission.
+
+### Query string params
+
+<ParamField query="before" type="ISO8601 timestamp">
+  Returns threads archived before this timestamp
+</ParamField>
+
+<ParamField query="limit" type="integer">
+  Optional maximum number of threads to return
+</ParamField>
+
+## List private archived threads
+
+<Note>
+**GET** `/channels/{channel.id}/threads/archived/private`
+</Note>
+
+Returns archived threads in the channel that are of type `PRIVATE_THREAD`. Requires both the `READ_MESSAGE_HISTORY` and `MANAGE_THREADS` permissions.
+
+## List joined private archived threads
+
+<Note>
+**GET** `/channels/{channel.id}/users/@me/threads/archived/private`
+</Note>
+
+Returns archived threads in the channel that are of type `PRIVATE_THREAD` and the user has joined. Requires the `READ_MESSAGE_HISTORY` permission.

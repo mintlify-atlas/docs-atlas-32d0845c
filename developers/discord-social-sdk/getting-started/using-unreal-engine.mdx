@@ -1,0 +1,211 @@
+---
+title: Getting started with Unreal Engine and the Discord Social SDK
+sidebarTitle: Using Unreal Engine
+description: Integrate the Discord Social SDK into Unreal Engine games.
+---
+
+## Overview
+
+This guide will walk you through integrating the Discord Social SDK into an Unreal Engine project. By the end, you'll have a project that can:
+
+- Authenticate users with Discord
+- Set up logging and status monitoring
+- Start the SDK and establish a connection
+- Request the number of Discord friends the player has
+- Set the player's rich presence for your game
+
+### Prerequisites
+
+Before starting, ensure you have:
+
+- Unreal Engine 5.1 or later
+- A Discord application created in the [Developer Portal](https://discord.com/developers/applications)
+
+---
+
+## Step 1: Create your Discord application
+
+1. Go to the [Discord Developer Portal](https://discord.com/developers/applications) and click **New Application**.
+2. Give your application a name and click **Create**.
+3. Copy your **Application ID** — you'll need it in your code.
+
+## Step 2: Configure OAuth2 redirect URIs
+
+1. In your application settings, click **OAuth2** in the sidebar.
+2. Under **Redirects**, add `http://127.0.0.1/callback`.
+3. Click **Save Changes**.
+
+## Step 3: Download the Social SDK for Unreal Engine
+
+1. In your application settings, click **Downloads** under the Discord Social SDK section in the sidebar.
+2. Select the latest version from the dropdown and download the SDK for Unreal Engine.
+
+---
+
+## Step 4: Project setup
+
+1. Create a new project in Unreal Engine.
+2. In your project's `Plugins` directory, create a folder called `DiscordSocialSDK`.
+3. Extract the SDK archive into the `DiscordSocialSDK` folder.
+4. Add `DiscordSocialSDK` to your project's `PublicDependencyModuleNames` in your `.Build.cs` file:
+
+```csharp
+PublicDependencyModuleNames.AddRange(new string[] {
+    "Core",
+    "CoreUObject",
+    "Engine",
+    "DiscordSocialSDK"
+});
+```
+
+5. Restart Unreal Editor to load the plugin.
+
+---
+
+## Step 5: Initialize the SDK
+
+Create a component or subsystem to manage the Discord client. Add the following initialization code:
+
+```cpp
+#include "discordpp.h"
+
+// Replace with your Discord Application ID
+const uint64_t APPLICATION_ID = 123456789012345678;
+
+// Create the client
+TSharedPtr<discordpp::Client> DiscordClient = MakeShared<discordpp::Client>();
+
+// Set up logging
+DiscordClient->AddLogCallback([](auto message, auto severity) {
+    UE_LOG(LogTemp, Log, TEXT("Discord SDK: %s"), UTF8_TO_TCHAR(message.c_str()));
+}, discordpp::LoggingSeverity::Info);
+
+// Monitor connection status
+DiscordClient->SetStatusChangedCallback(
+    [this](discordpp::Client::Status status,
+           discordpp::Client::Error error,
+           int32_t errorDetail) {
+        UE_LOG(LogTemp, Log, TEXT("Discord status: %s"),
+               UTF8_TO_TCHAR(discordpp::Client::StatusToString(status).c_str()));
+
+        if (status == discordpp::Client::Status::Ready) {
+            UE_LOG(LogTemp, Log, TEXT("Discord SDK ready!"));
+            OnDiscordReady();
+        }
+    });
+```
+
+---
+
+## Step 6: Run callbacks
+
+Call `RunCallbacks` from your game's tick function:
+
+```cpp
+void UDiscordSubsystem::Tick(float DeltaTime)
+{
+    discordpp::RunCallbacks();
+}
+```
+
+---
+
+## Step 7: Account linking with Discord
+
+<Info>
+This guide uses `Client::GetDefaultPresenceScopes`, which requests the `openid` and `sdk.social_layer_presence` scopes. These enable core features like account linking, friends list, and rich presence.
+
+If your game also needs lobbies, voice chat, or direct messaging, use `Client::GetDefaultCommunicationScopes` instead. See the [OAuth2 scopes guide](/developers/discord-social-sdk/core-concepts) for details.
+</Info>
+
+```cpp
+void StartOAuthFlow()
+{
+    auto codeVerifier = DiscordClient->CreateAuthorizationCodeVerifier();
+
+    discordpp::AuthorizationArgs args{};
+    args.SetClientId(APPLICATION_ID);
+    args.SetScopes(discordpp::Client::GetDefaultPresenceScopes());
+    args.SetCodeChallenge(codeVerifier.Challenge());
+
+    DiscordClient->Authorize(args,
+        [this, codeVerifier](auto result, auto code, auto redirectUri) {
+            if (!result.Successful()) {
+                UE_LOG(LogTemp, Error, TEXT("Auth error: %s"),
+                       UTF8_TO_TCHAR(result.Error().c_str()));
+                return;
+            }
+
+            DiscordClient->GetToken(APPLICATION_ID, code,
+                codeVerifier.Verifier(), redirectUri,
+                [this](discordpp::ClientResult result,
+                       std::string accessToken,
+                       std::string refreshToken,
+                       discordpp::AuthorizationTokenType tokenType,
+                       int32_t expiresIn,
+                       std::string scope) {
+
+                    DiscordClient->UpdateToken(
+                        discordpp::AuthorizationTokenType::Bearer,
+                        accessToken,
+                        [this](discordpp::ClientResult result) {
+                            if (result.Successful()) {
+                                DiscordClient->Connect();
+                            }
+                        });
+                });
+        });
+}
+```
+
+---
+
+## Step 8: Access relationships and set rich presence
+
+When the client is ready, retrieve friends and set rich presence:
+
+```cpp
+void OnDiscordReady()
+{
+    // Get friend count
+    auto relationships = DiscordClient->GetRelationships();
+    UE_LOG(LogTemp, Log, TEXT("Friend count: %d"), relationships.size());
+
+    // Set rich presence
+    discordpp::Activity activity;
+    activity.SetType(discordpp::ActivityTypes::Playing);
+    activity.SetState("In Competitive Match");
+    activity.SetDetails("Rank: Diamond II");
+
+    DiscordClient->UpdateRichPresence(activity,
+        [](discordpp::ClientResult result) {
+            if (result.Successful()) {
+                UE_LOG(LogTemp, Log, TEXT("Rich presence updated!"));
+            }
+        });
+}
+```
+
+---
+
+## Next steps
+
+<CardGroup cols={3}>
+  <Card title="Creating a unified friends list" href="/developers/discord-social-sdk/development-guides/creating-a-unified-friends-list">
+    Build a unified friends list combining Discord and game-specific friendships.
+  </Card>
+  <Card title="Setting rich presence" href="/developers/discord-social-sdk/development-guides/setting-rich-presence">
+    Customize your game's rich presence to show advanced information and game invites.
+  </Card>
+  <Card title="Managing lobbies" href="/developers/discord-social-sdk/development-guides/managing-lobbies">
+    Bring players together in a shared lobby with text chat and voice communication.
+  </Card>
+</CardGroup>
+
+---
+
+## Change log
+
+| Date | Changes |
+|------|---------|
+| March 17, 2025 | Initial release |

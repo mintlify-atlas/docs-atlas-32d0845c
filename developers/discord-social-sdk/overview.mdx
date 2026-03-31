@@ -1,0 +1,63 @@
+---
+title: Integrating the Discord Social SDK
+sidebarTitle: Overview
+description: Learn how to integrate Discord-powered social features into your game.
+---
+
+The Discord Social SDK lets you integrate Discord-powered social features directly into your game. Unlike a traditional SDK with built-in UI components, the Discord Social SDK provides access to raw data, letting you build a fully customized social experience that fits your game's aesthetic.
+
+## Integrate social features in your game
+
+<CardGroup cols={2}>
+  <Card title="Core Concepts" href="/developers/discord-social-sdk/core-concepts">
+    Learn how the SDK works and explore its key features including account linking, friends, rich presence, and communication.
+  </Card>
+  <Card title="Getting Started Guides" href="/developers/discord-social-sdk/getting-started">
+    Follow step-by-step guides to add the SDK to your game engine — C++, Unity, or Unreal Engine.
+  </Card>
+</CardGroup>
+
+## Dive deeper into the Discord Social SDK
+
+<CardGroup cols={3}>
+  <Card title="Development Guides" href="/developers/discord-social-sdk/development-guides/account-linking-with-discord">
+    Dive into feature guides for account linking, friends lists, game invites, and voice chat.
+  </Card>
+  <Card title="How-to Guides" href="/developers/discord-social-sdk/how-to">
+    Common solutions for debugging, using Discord APIs, moderation, and more.
+  </Card>
+  <Card title="SDK Reference Docs" href="https://discord.com/developers/docs/social-sdk/index.html">
+    Explore the full API reference documentation for the Discord Social SDK.
+  </Card>
+</CardGroup>
+
+---
+
+## Communication features
+
+Discord Social SDK features for text and voice communication are available but capped with rate limits until you apply for production access.
+
+<Warning>
+Communication features including lobbies, direct messages, voice chat, and linked channels have per-application rate limits during development and testing. You must apply for increased rate limits before using these features at production scale.
+</Warning>
+
+Current rate limits for communication features:
+
+| Operation | Rate Limit |
+|-----------|-----------|
+| Lobby Create/Join | 20 requests every 2 hours |
+| Lobby Update | 100 requests every 2 hours |
+| Lobby Linking (linked channels) | 20 requests every 2 hours |
+| Sending messages to a lobby | 100 requests every 2 hours |
+| Sending direct messages | 100 requests every 2 hours |
+
+For more information, see [Communication Features](/developers/discord-social-sdk/core-concepts) and the section on applying for increased rate limits.
+
+---
+
+## Get help and join the community
+
+Need support or looking to connect with other game developers?
+
+- Join our [DDevs Discord Server](https://discord.gg/discord-developers) and get help from the community in the `#social-sdk-dev-help` channel.
+- [File a ticket with Developer Support](https://dis.gd/social-sdk) to report issues.

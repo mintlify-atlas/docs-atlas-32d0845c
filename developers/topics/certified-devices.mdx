@@ -1,0 +1,214 @@
+---
+title: Certified Devices
+description: Integration guide for hardware manufacturers to report certified device state to Discord via the local RPC server.
+---
+
+Discord supports hardware manufacturers reporting real-time state for certified devices connected to a user's computer. When integrated, your device earns a **CERTIFIED** badge in Discord's audio settings and Discord can automatically coordinate with your hardware's native audio features for an optimal experience.
+
+## How It Works
+
+1. [Create an application](https://discord.com/developers/applications) for your hardware vendor and save the Client ID.
+2. Connect to the Discord local RPC server via HTTP or WebSocket.
+3. Send a [`SET_CERTIFIED_DEVICES`](/developers/topics/rpc#setcertifieddevices) payload (or equivalent HTTP POST) whenever device state changes.
+
+That's it. You provide real-time info about connected devices and Discord handles the rest — automatically deferring to your hardware's native echo cancellation, noise suppression, and gain control when they're active.
+
+---
+
+## Connecting
+
+Connect to the local RPC server using the following query string parameters:
+
+| Parameter | Value                | Required  |
+|-----------|----------------------|-----------|
+| `v`       | `1`                  | All       |
+| `client_id` | Your app's client ID | All    |
+| `encoding` | `json`              | WebSocket |
+
+### Connection URIs
+
+<CodeGroup>
+
+```text HTTP
+http://127.0.0.1:PORT/rpc?v=1&client_id=YOUR_CLIENT_ID
+```
+
+```text WebSocket
+ws://127.0.0.1:PORT?v=1&client_id=YOUR_CLIENT_ID&encoding=json
+```
+
+</CodeGroup>
+
+`PORT` ranges from **6463 to 6473**. Iterate sequentially until a connection succeeds, then use that port for the rest of the session.
+
+<Tip>
+Send updates any time the hardware mute is toggled, or when a voice feature like echo cancellation is enabled or disabled by the user. This lets Discord coordinate with your hardware in real time.
+</Tip>
+
+Each update should include the **full array of devices**, sorted by your preferred priority. The first device in the array is the one Discord will attempt to use by default.
+
+---
+
+## Getting the Device UUID
+
+Each device in the `SET_CERTIFIED_DEVICES` payload requires an `id` field — the Windows device UUID retrieved via the native Windows API. It looks like:
+
+```
+{0.0.1.00000000}.{6cff2b76-44a8-46b9-b528-262ad8609d9f}
+```
+
+<Info>
+On macOS, the `id` should be the name of the device instead of a UUID.
+</Info>
+
+### Microphone ID (C++)
+
+```cpp
+id = waveInMessage((HWAVEIN)IntToPtr(index),
+                      DRV_QUERYFUNCTIONINSTANCEID,
+                      (DWORD_PTR)pstrEndpointId,
+                      cbEndpointId);
+```
+
+### Speaker ID (C++)
+
+```cpp
+id = waveOutMessage((HWAVEIN)IntToPtr(index),
+                      DRV_QUERYFUNCTIONINSTANCEID,
+                      (DWORD_PTR)pstrEndpointId,
+                      cbEndpointId);
+```
+
+---
+
+## Data Models
+
+### Device Object
+
+| Field                     | Type   | Description                                              |
+|---------------------------|--------|----------------------------------------------------------|
+| type                      | string | [Device type](#device-type)                              |
+| id                        | string | The device's Windows UUID (or macOS device name)         |
+| vendor                    | object | [Vendor object](#vendor-object)                          |
+| model                     | object | [Model object](#model-object)                            |
+| related                   | array  | UUIDs of related devices                                 |
+| echo_cancellation?\*      | boolean | If the device's native echo cancellation is enabled     |
+| noise_suppression?\*      | boolean | If the device's native noise suppression is enabled     |
+| automatic_gain_control?\* | boolean | If the device's native automatic gain control is enabled|
+| hardware_mute?\*          | boolean | If the device is hardware muted                         |
+
+<Note>
+Fields marked with `*` are only applicable for `AUDIO_INPUT` (`audioinput`) device types.
+</Note>
+
+### Vendor Object
+
+| Field | Type   | Description        |
+|-------|--------|--------------------|
+| name  | string | Name of the vendor |
+| url   | string | URL for the vendor |
+
+### Model Object
+
+| Field | Type   | Description       |
+|-------|--------|-------------------|
+| name  | string | Name of the model |
+| url   | string | URL for the model |
+
+### Device Type
+
+| Type           | Value           |
+|----------------|-----------------|
+| `AUDIO_INPUT`  | `"audioinput"`  |
+| `AUDIO_OUTPUT` | `"audiooutput"` |
+| `VIDEO_INPUT`  | `"videoinput"`  |
+
+---
+
+## Examples
+
+### HTTP
+
+Send device state updates via a POST request:
+
+```bash
+curl -X POST -H 'Content-Type: application/json' -d '{
+  "nonce": "9b4e9711-97f3-4f35-b047-32c82a51978e",
+  "cmd": "SET_CERTIFIED_DEVICES",
+  "args": {
+    "devices": [
+      {
+        "type": "audioinput",
+        "id": "{0.0.1.00000000}.{6cff2b76-44a8-46b9-b528-262ad8609d9f}",
+        "vendor": {
+          "name": "SteelSeries",
+          "url": "https://steelseries.com"
+        },
+        "model": {
+          "name": "Arctis 7",
+          "url": "https://steelseries.com/gaming-headsets/arctis-7"
+        },
+        "related": ["{0.0.1.00000000}.{6cff2b76-44a8-46b9-b528-262ad8609d9f}"],
+        "echo_cancellation": true,
+        "noise_suppression": true,
+        "automatic_gain_control": true,
+        "hardware_mute": false
+      }
+    ]
+  }
+}' http://127.0.0.1:PORT/rpc?v=1&client_id=YOUR_CLIENT_ID
+```
+
+The server responds with `200 OK` and the following JSON:
+
+```json
+{
+  "cmd": "SET_CERTIFIED_DEVICES",
+  "data": null,
+  "evt": null,
+  "nonce": "9b4e9711-97f3-4f35-b047-32c82a51978e"
+}
+```
+
+### WebSocket
+
+**Command**
+
+```json
+{
+  "nonce": "9b4e9711-97f3-4f35-b047-32c82a51978e",
+  "cmd": "SET_CERTIFIED_DEVICES",
+  "args": {
+    "devices": [
+      {
+        "type": "audioinput",
+        "id": "{0.0.1.00000000}.{6cff2b76-44a8-46b9-b528-262ad8609d9f}",
+        "vendor": {
+          "name": "SteelSeries",
+          "url": "https://steelseries.com"
+        },
+        "model": {
+          "name": "Arctis 7",
+          "url": "https://steelseries.com/gaming-headsets/arctis-7"
+        },
+        "related": ["{0.0.1.00000000}.{6cff2b76-44a8-46b9-b528-262ad8609d9f}"],
+        "echo_cancellation": true,
+        "noise_suppression": true,
+        "automatic_gain_control": true,
+        "hardware_mute": false
+      }
+    ]
+  }
+}
+```
+
+**Response**
+
+```json
+{
+  "nonce": "9b4e9711-97f3-4f35-b047-32c82a51978e",
+  "cmd": "SET_CERTIFIED_DEVICES",
+  "data": null,
+  "evt": null
+}
+```

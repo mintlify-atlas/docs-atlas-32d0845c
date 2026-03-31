@@ -1,0 +1,88 @@
+---
+title: Components Overview
+description: Learn about Discord's interactive message components.
+---
+
+Components allow you to add interactive elements to modals and the messages your app sends. They're accessible, customizable, and easy to use.
+
+To use components, messages must be sent with the `IS_COMPONENTS_V2` flag (`1<<15`). Note that using this flag disables traditional `content` and `embeds`—all content must be sent as components instead.
+
+<Info>
+[Legacy message component behavior](/developers/components/reference#legacy-message-component-behavior) will **not** be deprecated and will continue to be available to your apps on a message-by-message basis. However, we recommend using the new components for new projects and features.
+</Info>
+
+<CardGroup cols={3}>
+  <Card title="Using Message Components" href="/developers/components/using-message-components" icon="comment-dots">
+    A guide on sending message components with examples.
+  </Card>
+  <Card title="Component Reference" href="/developers/components/reference" icon="book-open">
+    Explore the complete components reference documentation.
+  </Card>
+  <Card title="Interactions Overview" href="/developers/interactions/overview" icon="arrows-left-right">
+    Learn how components integrate with the interactions system.
+  </Card>
+</CardGroup>
+
+---
+
+## Component Categories
+
+Components are organized into three categories based on their purpose:
+
+### Layout Components
+
+Layout components organize and structure the visual presentation of your message:
+
+- **[Action Row](/developers/components/reference#action-row)** (type `1`) — A top-level container for a row of interactive components. Can hold up to 5 buttons or a single select menu.
+- **[Section](/developers/components/reference#section)** (type `9`) — Associates text content with an accessory component (like a button or thumbnail) side by side.
+- **[Separator](/developers/components/reference#separator)** (type `14`) — Adds vertical padding and a visual divider between other components.
+- **[Container](/developers/components/reference#container)** (type `17`) — Visually groups a set of components with an optional accent color bar.
+- **[Label](/developers/components/reference#label)** (type `18`) — Wraps modal components with a label and optional description. Used in modals instead of Action Row.
+
+### Content Components
+
+Content components display static text, images, and files:
+
+- **[Text Display](/developers/components/reference#text-display)** (type `10`) — Renders markdown-formatted text. Behaves similarly to the message `content` field but allows multiple instances.
+- **[Thumbnail](/developers/components/reference#thumbnail)** (type `11`) — A small image used as an accessory in a Section. Supports GIF and WEBP.
+- **[Media Gallery](/developers/components/reference#media-gallery)** (type `12`) — Displays 1–10 images or media items in an organized gallery.
+- **[File](/developers/components/reference#file)** (type `13`) — Displays an uploaded file attachment.
+
+### Interactive Components
+
+Interactive components respond to user input and generate [interaction](/developers/interactions/overview) events:
+
+- **[Button](/developers/components/reference#button)** (type `2`) — A clickable element with customizable style, label, and emoji. Must be inside an Action Row or Section accessory.
+- **[String Select](/developers/components/reference#string-select)** (type `3`) — A dropdown with developer-defined options. Available in messages and modals.
+- **[Text Input](/developers/components/reference#text-input)** (type `4`) — A single- or multi-line text field. Only available in modals.
+- **[User Select](/developers/components/reference#user-select)** (type `5`) — A dropdown auto-populated with server members.
+- **[Role Select](/developers/components/reference#role-select)** (type `6`) — A dropdown auto-populated with server roles.
+- **[Mentionable Select](/developers/components/reference#mentionable-select)** (type `7`) — A dropdown auto-populated with users and roles.
+- **[Channel Select](/developers/components/reference#channel-select)** (type `8`) — A dropdown auto-populated with server channels. Can be filtered by channel type.
+- **[File Upload](/developers/components/reference#file-upload)** (type `19`) — Allows users to upload files in modals. Only available in modals.
+- **[Radio Group](/developers/components/reference#radio-group)** (type `21`) — A single-choice set of options. Only available in modals.
+- **[Checkbox Group](/developers/components/reference#checkbox-group)** (type `22`) — A multi-selectable group of checkboxes. Only available in modals.
+- **[Checkbox](/developers/components/reference#checkbox)** (type `23`) — A single yes/no checkbox. Only available in modals.
+
+---
+
+## Using the IS_COMPONENTS_V2 Flag
+
+When you send a message with the `IS_COMPONENTS_V2` flag (`1 << 15`, value `32768`), the following changes apply:
+
+- The `content` and `embeds` fields no longer work. Use [Text Display](/developers/components/reference#text-display) and [Container](/developers/components/reference#container) instead.
+- Attachments won't show by default—they must be exposed through [File](/developers/components/reference#file) components.
+- The `poll` and `stickers` fields are disabled.
+- Messages allow up to 40 total components.
+
+<Warning>
+Once a message has been sent with the `IS_COMPONENTS_V2` flag, the flag cannot be removed from that message when editing.
+</Warning>
+
+---
+
+## Get Help & Join the Community
+
+Do you have a question or want to connect with other app developers?
+
+Join the [DDevs Discord Server](https://discord.gg/discord-developers) and get help from the community, share best practices, and discover new ways to enhance your apps.

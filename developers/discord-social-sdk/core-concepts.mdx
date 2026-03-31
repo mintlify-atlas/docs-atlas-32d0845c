@@ -1,0 +1,185 @@
+---
+title: Social SDK core concepts
+sidebarTitle: Core concepts
+description: Overview of the Discord Social SDK's core concepts including features, communication, authentication, and platform compatibility.
+---
+
+The Discord Social SDK allows you to build social features into your game, including friend lists, messaging, voice chat, and rich presence. Unlike a traditional SDK with built-in UI components, the Discord Social SDK provides access to raw data, allowing you to create a fully customized experience that aligns with your game's aesthetic.
+
+## Core features
+
+### Account linking
+
+Account linking allows a game to authenticate users with their Discord credentials, gaining access to social features like friends, chat, and presence. This process uses OAuth2 authentication.
+
+| Development guides |
+|--------------------|
+| [Account linking from your game](/developers/discord-social-sdk/development-guides/account-linking-with-discord) |
+
+### Provisional accounts
+
+Provisional accounts let players use social features in your game without linking a Discord account, so all players can have a consistent gameplay experience.
+
+Players with provisional accounts can access game-specific social features, and they can upgrade to a full Discord account at any time by completing the account linking flow.
+
+### Friend system and relationships
+
+The SDK models friendships and relationships in two ways:
+
+- **Discord friends** — Persistent across all games.
+- **Game-specific friends** — Limited to the current game.
+
+| Development guides |
+|--------------------|
+| [Creating a unified friends list](/developers/discord-social-sdk/development-guides/creating-a-unified-friends-list) |
+
+### Presence and rich presence
+
+Presence refers to a user's online status, while rich presence provides game-specific activity data:
+
+- Displays if a user is online, idle, or offline
+- Shows detailed game stats (e.g., what level they're playing and time played)
+- Allows users to send game invites through Discord and in-game
+
+| Development guides |
+|--------------------|
+| [Setting rich presence](/developers/discord-social-sdk/development-guides/setting-rich-presence) |
+
+---
+
+## Communication features
+
+<Warning>
+The following communication features are available for development and testing, but their usage is capped with a rate limit. You must apply for increased rate limits before using these features in a production release.
+</Warning>
+
+### Messaging and communication
+
+Users can communicate via direct messages (DMs) and voice calls:
+
+- **DMs** — One-on-one private chat using `MessageHandle`.
+- **Calls** — Real-time voice communication inside a game lobby using `Call`.
+
+| Development guides |
+|--------------------|
+| [Managing voice chat](/developers/discord-social-sdk/development-guides/managing-voice-chat) |
+
+### Lobbies and in-game chat
+
+A lobby is a virtual space where players can interact through voice and text chat.
+
+- Your game controls lobbies, which can have different membership rules (up to 1,000 members).
+- Integrated voice chat allows real-time communication among players in a session.
+- Lobby secrets can be shared or embedded in rich presence for game invite flows.
+
+| Development guides |
+|--------------------|
+| [Managing lobbies](/developers/discord-social-sdk/development-guides/managing-lobbies) |
+
+### Linked channels
+
+Games can link in-game chat with Discord's server-based text channels, allowing players to chat in a Discord server without leaving the game. Messages flow bidirectionally between the game and Discord.
+
+---
+
+## OAuth2 scopes
+
+OAuth2 scopes define the level of access your app has to a user's Discord account. The Discord Social SDK provides two scope sets for the most common use cases:
+
+| Helper method | Scopes requested | Features enabled |
+|--------------|-----------------|-----------------|
+| `Client::GetDefaultPresenceScopes` | `openid sdk.social_layer_presence` | Account linking, friends list, rich presence |
+| `Client::GetDefaultCommunicationScopes` | `openid sdk.social_layer` | All of the above, plus lobbies, voice chat, direct messaging, and linked channels |
+
+<Note>
+With only the default presence scopes, your game cannot use any of the limited-access communication features.
+</Note>
+
+### OAuth2 client types
+
+OAuth2 has two client types: **Confidential** and **Public**. Most games will not want to ship with Public Client enabled.
+
+Some SDK methods require your Discord application to be a Public Client. These methods also have server-side alternatives you can use with a Confidential Client.
+
+- Using confidential clients with proper secret management is recommended for production applications.
+- Public clients cannot securely store client secrets.
+- Your security team should review this setting and authentication flows before releasing your game.
+
+---
+
+## Platform compatibility
+
+The Discord Social SDK is available for the following platforms:
+
+| Platform | Min version | Support level | Standalone C++ | Unreal Engine | Unity |
+|----------|-------------|--------------|----------------|---------------|-------|
+| Windows (x64) | 10 | Generally Available | Yes | Yes | Yes |
+| Windows (ARM64) | 11 | Generally Available | Yes | No | No |
+| macOS (x64) | 10.5 | Generally Available | Yes | No | Yes |
+| macOS (ARM64) | 11 | Generally Available | Yes | No | Yes |
+| Linux | glibc 2.31+ | Experimental | Yes | Yes | Yes |
+| Android | 7.0 | Generally Available | Yes | Yes | Yes |
+| iOS | 15.1 | Generally Available | Yes | Yes | Yes |
+| Xbox One | — | Experimental | Yes | Yes | No |
+| Xbox Series X\|S | — | Generally Available | Yes | Yes | Yes |
+| PlayStation 4 | — | Experimental | Yes | Yes | No |
+| PlayStation 5 | — | Generally Available | Yes | Yes | Yes |
+
+<Info>
+Console platform access requires additional approval. Contact Developer Support to request access.
+</Info>
+
+<Warning>
+Discord Account Linking entry points are prohibited on Sony platforms.
+</Warning>
+
+---
+
+## Integration overview
+
+To implement the Discord Social SDK, developers for all platforms generally follow these steps:
+
+<Steps>
+  <Step title="Import the SDK">
+    Add the SDK library to your project following the [Getting Started](/developers/discord-social-sdk/getting-started) guide for your platform.
+  </Step>
+  <Step title="Initialize the SDK">
+    Create a `Client` instance and set up event listeners to monitor SDK events and callbacks.
+  </Step>
+  <Step title="Authenticate users">
+    Link an existing Discord account via OAuth using `Client::Authorize`, or create provisional accounts using `Client::GetProvisionalToken` for players without Discord.
+  </Step>
+  <Step title="Implement social features">
+    Build out your unified friends list and relationships, set up rich presence for game activity updates, configure lobbies for multiplayer interaction and game invites, and manage direct messages and voice communication.
+  </Step>
+  <Step title="Handle events and API calls">
+    Listen for changes in friend lists, presence updates, and chat messages. Use Discord's APIs to update statuses, send messages, and manage connections.
+  </Step>
+</Steps>
+
+---
+
+## Next steps
+
+After exploring these core concepts, start implementing the Discord Social SDK:
+
+<CardGroup cols={3}>
+  <Card title="Getting started" href="/developers/discord-social-sdk/getting-started">
+    Follow step-by-step setup instructions for your platform.
+  </Card>
+  <Card title="Account linking" href="/developers/discord-social-sdk/development-guides/account-linking-with-discord">
+    Implement user authentication with Discord OAuth2.
+  </Card>
+  <Card title="Development guides" href="/developers/discord-social-sdk/development-guides/creating-a-unified-friends-list">
+    Step-by-step guides for implementing each social feature.
+  </Card>
+</CardGroup>
+
+---
+
+## Change log
+
+| Date | Changes |
+|------|---------|
+| July 21, 2025 | Restructured core concepts and OAuth scopes |
+| March 17, 2025 | Initial release |

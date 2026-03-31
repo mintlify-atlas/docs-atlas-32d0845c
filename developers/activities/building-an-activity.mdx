@@ -1,0 +1,470 @@
+---
+title: Building Your First Discord Activity
+description: Step-by-step tutorial for creating your first Discord Activity using the Embedded App SDK.
+---
+
+[Activities](/developers/activities/overview) are web-based games and apps that run inside Discord, embedded in an iframe within the Discord client. They can be launched from the App Launcher or in response to interactions.
+
+If this is your first time learning about Activities, check out the [Activities Overview](/developers/activities/overview) before continuing.
+
+## Introduction
+
+In this guide, you will build a Discord app with a basic Activity that handles user authentication and fetches data using the Discord API.
+
+This guide assumes familiarity with [JavaScript](https://developer.mozilla.org/en-US/docs/Learn/Getting_started_with_the_web/JavaScript_basics), [async functions](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/async_function), and frontend frameworks like [React](https://react.dev/) or [Vue](https://vuejs.org/).
+
+<Accordion title="Resources used in this guide" icon="list" defaultOpen>
+- **[discord/getting-started-activity](https://github.com/discord/getting-started-activity)** — a project template to get you started
+- **[@discord/embedded-app-sdk](https://github.com/discord/embedded-app-sdk)** — the SDK for communication between your app and Discord
+- **[Node.js](https://nodejs.org)** — latest version
+- **[Express](https://expressjs.com)** — a JavaScript web framework for handling authentication and serving your app
+- **[Vite](https://vite.dev/)** — a build tool for modern JavaScript projects
+- **[cloudflared](https://github.com/cloudflare/cloudflared?tab=readme-ov-file#installing-cloudflared)** — for bridging your local development server to the internet
+</Accordion>
+
+---
+
+## Step 0: Enable Developer Mode
+
+Before getting started, enable Developer Mode on your Discord account. Developer Mode lets you run in-development Activities and exposes resource IDs in the Discord client to simplify testing.
+
+<Steps>
+  <Step title="Open User Settings">
+    In your Discord client, click the cogwheel icon near the bottom-left next to your username.
+  </Step>
+  <Step title="Enable Developer Mode">
+    Click the **Advanced** tab in the left sidebar and toggle on `Developer Mode`.
+  </Step>
+</Steps>
+
+---
+
+## Step 1: Set Up the Project
+
+Clone the [`discord/getting-started-activity`](https://github.com/discord/getting-started-activity) repository:
+
+```bash
+git clone git@github.com:discord/getting-started-activity.git
+```
+
+The sample project has two parts:
+- `client` — the Activity's frontend, built with vanilla JavaScript and [Vite](https://vitejs.dev/)
+- `server` — a backend using Node.js and Express for handling authentication
+
+<Accordion title="Project structure" icon="code">
+
+```
+├── client
+├────── main.js       -> your Activity frontend
+├────── index.html
+├────── package.json
+├────── rocket.png
+├────── vite.config.js
+├── server
+├────── package.json
+├────── server.js     -> your Activity backend
+└── .env              -> your credentials, IDs and secrets
+```
+
+</Accordion>
+
+Navigate to the `client` directory and install dependencies:
+
+```bash
+cd getting-started-activity/client
+npm install
+npm run dev
+```
+
+Visit `http://localhost:5173/` to see the frontend template running.
+
+<Accordion title="Step 1 Checkpoint" icon="list" defaultOpen>
+
+By the end of Step 1, you should have:
+- Developer Mode enabled on your Discord account
+- The [sample project](https://github.com/discord/getting-started-activity) cloned locally
+- Frontend dependencies installed and the dev server running
+</Accordion>
+
+---
+
+## Step 2: Create a Discord App
+
+Create a new app in the developer portal:
+
+[Create App](https://discord.com/developers/applications?new_application=true)
+
+Enter a name, select a team, and click **Create**.
+
+<Info>
+Launching a non-distributed Activity is limited to you and members of the developer team. If collaborating with others, create a [developer team](https://discord.com/developers/teams) and set it as the owner.
+</Info>
+
+### Configure Installation Contexts
+
+Click [**Installation**](https://discord.com/developers/applications/select/installation) in the sidebar and make sure both **User Install** and **Guild Install** are selected under **Installation Contexts**. This ensures users can launch your Activity across servers, DMs, and Group DMs.
+
+### Add a Redirect URI
+
+The Embedded App SDK automatically handles redirecting users back to your Activity, but you need to register at least one Redirect URI.
+
+Click [**OAuth2**](https://discord.com/developers/applications/select/oauth2), enter `https://127.0.0.1` as a placeholder redirect URI, and click **Save Changes**.
+
+### Copy Your OAuth2 Credentials
+
+In the root of your project, copy the environment file template:
+
+```bash
+cp example.env .env
+```
+
+<Warning>
+Your `DISCORD_CLIENT_SECRET` and `DISCORD_BOT_TOKEN` are sensitive secrets. Never share them or check them into version control.
+</Warning>
+
+From the [**OAuth2**](https://discord.com/developers/applications/select/oauth2) page:
+1. Copy **Client ID** into your `.env` as `VITE_CLIENT_ID`
+2. Copy **Client Secret** into your `.env` as `DISCORD_CLIENT_SECRET`
+
+<Info>
+The `VITE_` prefix makes the variable accessible to client-side code. All other environment variables remain private. See the [Vite documentation](https://vitejs.dev/guide/env-and-mode) for details.
+</Info>
+
+<Accordion title="Step 2 Checkpoint" icon="list" defaultOpen>
+
+By the end of Step 2, make sure you have:
+- A placeholder Redirect URI set in your app's OAuth2 settings
+- Your app's Client ID and Client Secret added to your `.env` file
+</Accordion>
+
+---
+
+## Step 3: Set Up the Embedded App SDK
+
+Install the [Embedded App SDK](/developers/developer-tools/embedded-app-sdk) in your project's `client` directory:
+
+```bash
+npm install @discord/embedded-app-sdk
+```
+
+Then update `getting-started-activity/client/main.js` to import and instantiate the SDK:
+
+```javascript
+// Import the SDK
+import { DiscordSDK } from "@discord/embedded-app-sdk";
+
+import "./style.css";
+import rocketLogo from '/rocket.png';
+
+// Instantiate the SDK
+const discordSdk = new DiscordSDK(import.meta.env.VITE_DISCORD_CLIENT_ID);
+
+setupDiscordSdk().then(() => {
+  console.log("Discord SDK is ready");
+});
+
+async function setupDiscordSdk() {
+  await discordSdk.ready();
+}
+
+document.querySelector('#app').innerHTML = `
+  <div>
+    <img src="${rocketLogo}" class="logo" alt="Discord" />
+    <h1>Hello, World!</h1>
+  </div>
+`;
+```
+
+<Warning>
+Once you add the SDK to your app, you will not be able to view it in a regular browser. In the next step you will run your Activity inside Discord.
+</Warning>
+
+<Accordion title="Step 3 Checkpoint" icon="list" defaultOpen>
+
+By the end of Step 3, make sure you have:
+- Installed the Embedded App SDK
+- Imported and instantiated the SDK in `client/main.js`
+</Accordion>
+
+---
+
+## Step 4: Run Your App in Discord
+
+### Start the Frontend
+
+In your `client` directory:
+
+```bash
+npm run dev
+```
+
+You should see output like:
+
+```
+VITE v5.0.12  ready in 100 ms
+
+➜  Local:   http://localhost:5173/
+```
+
+### Set Up a Public Endpoint
+
+Activities must be served over a public HTTPS URL. Use `cloudflared` to create a tunnel:
+
+```bash
+cloudflared tunnel --url http://localhost:5173
+```
+
+Copy the generated URL from the output:
+
+```
+Your quick Tunnel has been created! Visit it at (it may take some time to be reachable):
+https://funky-jogging-bunny.trycloudflare.com
+```
+
+### Configure URL Mapping
+
+In your app's settings, click [**URL Mappings**](https://discord.com/developers/applications/select/embedded/url-mappings) under **Activities**. Enter the `cloudflared` URL as the target for the `/` prefix:
+
+| PREFIX | TARGET |
+|--------|--------|
+| `/` | `funky-jogging-bunny.trycloudflare.com` |
+
+### Enable Activities
+
+Under **Activities** in the sidebar, click [**Settings**](https://discord.com/developers/applications/select/embedded/settings) and toggle on **Enable Activities**.
+
+When Activities are enabled, a default [Entry Point command](/developers/interactions/application-commands#entry-point-commands) called "Launch" is automatically created.
+
+### Launch in Discord
+
+Navigate to a voice or text channel and open the App Launcher. Your Activity should appear — click it to launch your locally running app from inside Discord.
+
+<Accordion title="Step 4 Checkpoint" icon="list" defaultOpen>
+
+By the end of Step 4, make sure you have:
+- A running public endpoint via `cloudflared`
+- A URL Mapping configured in your app's settings
+- Activities enabled for your app
+- Successfully launched your Activity in Discord
+</Accordion>
+
+---
+
+## Step 5: Authorize and Authenticate Users
+
+Start the backend server to handle the OAuth2 flow:
+
+```bash
+cd server
+npm install
+npm run dev
+```
+
+The server exposes a single `POST /api/token` route that exchanges an authorization code for an access token.
+
+<Accordion title="server/server.js" icon="eye">
+
+```javascript
+import express from "express";
+import dotenv from "dotenv";
+import fetch from "node-fetch";
+dotenv.config({ path: "../.env" });
+
+const app = express();
+const port = 3001;
+
+app.use(express.json());
+
+app.post("/api/token", async (req, res) => {
+  const response = await fetch(`https://discord.com/api/oauth2/token`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+    body: new URLSearchParams({
+      client_id: process.env.VITE_DISCORD_CLIENT_ID,
+      client_secret: process.env.DISCORD_CLIENT_SECRET,
+      grant_type: "authorization_code",
+      code: req.body.code,
+    }),
+  });
+
+  const { access_token } = await response.json();
+  res.send({access_token});
+});
+
+app.listen(port, () => {
+  console.log(`Server listening at http://localhost:${port}`);
+});
+```
+
+</Accordion>
+
+Now update `client/main.js` to perform the full authorization and authentication flow:
+
+```javascript
+import { DiscordSDK } from "@discord/embedded-app-sdk";
+
+import rocketLogo from '/rocket.png';
+import "./style.css";
+
+let auth;
+
+const discordSdk = new DiscordSDK(import.meta.env.VITE_DISCORD_CLIENT_ID);
+
+setupDiscordSdk().then(() => {
+  console.log("Discord SDK is authenticated");
+});
+
+async function setupDiscordSdk() {
+  await discordSdk.ready();
+  console.log("Discord SDK is ready");
+
+  // Authorize with Discord Client
+  const { code } = await discordSdk.commands.authorize({
+    client_id: import.meta.env.VITE_DISCORD_CLIENT_ID,
+    response_type: "code",
+    state: "",
+    prompt: "none",
+    scope: [
+      "identify",
+      "guilds",
+      "applications.commands"
+    ],
+  });
+
+  // Retrieve an access_token from your Activity's server
+  const response = await fetch("/api/token", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ code }),
+  });
+  const { access_token } = await response.json();
+
+  // Authenticate with Discord client
+  auth = await discordSdk.commands.authenticate({ access_token });
+
+  if (auth == null) {
+    throw new Error("Authenticate command failed");
+  }
+}
+
+document.querySelector('#app').innerHTML = `
+  <div>
+    <img src="${rocketLogo}" class="logo" alt="Discord" />
+    <h1>Hello, World!</h1>
+  </div>
+`;
+```
+
+<Warning>
+Access tokens are sensitive. Store them securely and treat them like passwords.
+</Warning>
+
+<Accordion title="Step 5 Checkpoint" icon="list" defaultOpen>
+
+By the end of Step 5, make sure you have:
+- Updated `client/main.js` to call the backend for user authorization and authentication
+- Successfully completed the authorization flow when launching your Activity
+</Accordion>
+
+---
+
+## Step 6: Fetch the Channel with the SDK
+
+Now that users are authenticated, use the SDK to fetch information about the channel the Activity is running in:
+
+```javascript
+async function appendVoiceChannelName() {
+  const app = document.querySelector('#app');
+
+  let activityChannelName = 'Unknown';
+
+  // Requesting the channel in GDMs requires dm_channels.read scope
+  if (discordSdk.channelId != null && discordSdk.guildId != null) {
+    const channel = await discordSdk.commands.getChannel({channel_id: discordSdk.channelId});
+    if (channel.name != null) {
+      activityChannelName = channel.name;
+    }
+  }
+
+  const textTag = document.createElement('p');
+  textTag.textContent = `Activity Channel: "${activityChannelName}"`;
+  app.appendChild(textTag);
+}
+```
+
+Call this function after authentication:
+
+```javascript
+setupDiscordSdk().then(() => {
+  console.log("Discord SDK is authenticated");
+  appendVoiceChannelName();
+});
+```
+
+---
+
+## Step 7: Fetch the Guild Using the API
+
+With the `guilds` scope granted, you can use the `access_token` to call the Discord HTTP API directly:
+
+```javascript
+async function appendGuildAvatar() {
+  const app = document.querySelector('#app');
+
+  // Fetch all guilds the user is in
+  const guilds = await fetch(`https://discord.com/api/v10/users/@me/guilds`, {
+    headers: {
+      Authorization: `Bearer ${auth.access_token}`,
+      'Content-Type': 'application/json',
+    },
+  }).then((response) => response.json());
+
+  // Find the current guild
+  const currentGuild = guilds.find((g) => g.id === discordSdk.guildId);
+
+  // Render the guild avatar
+  if (currentGuild != null) {
+    const guildImg = document.createElement('img');
+    guildImg.setAttribute(
+      'src',
+      `https://cdn.discordapp.com/icons/${currentGuild.id}/${currentGuild.icon}.webp?size=128`
+    );
+    guildImg.setAttribute('width', '128px');
+    guildImg.setAttribute('height', '128px');
+    guildImg.setAttribute('style', 'border-radius: 50%;');
+    app.appendChild(guildImg);
+  }
+}
+```
+
+Then call it alongside the channel name function:
+
+```javascript
+setupDiscordSdk().then(() => {
+  console.log("Discord SDK is authenticated");
+  appendVoiceChannelName();
+  appendGuildAvatar();
+});
+```
+
+---
+
+## Next Steps
+
+You now have a working Discord Activity that authenticates users and fetches Discord data. From here, explore:
+
+<CardGroup cols={3}>
+  <Card title="Development Guides" href="/developers/activities/development-guides/local-development">
+    Learn about local development setup, networking, multiplayer patterns, and more.
+  </Card>
+  <Card title="SDK Reference" href="/developers/developer-tools/embedded-app-sdk">
+    Full reference for all Embedded App SDK commands and events.
+  </Card>
+  <Card title="Sample Projects" href="https://github.com/discord/embedded-app-sdk-examples">
+    Explore the full range of SDK features in the playground app and other examples.
+  </Card>
+</CardGroup>

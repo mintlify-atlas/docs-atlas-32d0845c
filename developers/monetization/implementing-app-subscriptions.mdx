@@ -1,0 +1,211 @@
+---
+title: Implementing app subscriptions
+description: Learn how to implement recurring user and guild subscriptions for premium functionality in your Discord app.
+---
+
+Charge users for premium app functionality with a recurring user or guild subscription.
+
+Before you add an app subscription, you must:
+
+1. [Enable monetization](/developers/monetization/enabling-monetization) for your app.
+2. [Create a subscription SKU](/developers/monetization/managing-skus#creating-a-sku) to represent your subscription offering.
+
+---
+
+## Types of subscriptions
+
+<CardGroup cols={2}>
+  <Card title="User subscriptions" icon="user">
+    Premium features granted to an individual user across any server where your app is installed.
+  </Card>
+  <Card title="Guild subscriptions" icon="users">
+    Premium benefits provided to all members within a specific server.
+  </Card>
+</CardGroup>
+
+---
+
+## How app subscriptions work
+
+When a user purchases your subscription SKU, Discord:
+
+1. Creates an [Entitlement](/developers/resources/entitlement) for the user (or guild) and the subscription SKU.
+2. Emits an `ENTITLEMENT_CREATE` event via the Gateway.
+3. Makes the entitlement available via the `List Entitlements` API endpoint.
+4. Makes the entitlement available on interaction payloads initiated by the entitled user or guild members.
+5. Makes the subscription available via the `List Subscriptions` API endpoint.
+
+The entitlement is granted indefinitely until the user cancels — `ends_at` will be `null`. When a subscription ends, you receive an `ENTITLEMENT_UPDATE` event with an `ends_at` timestamp.
+
+### Subscription lifecycle events
+
+Because entitlements don't update on renewal or cancellation, use subscription events to track the subscription lifecycle.
+
+<Info>
+This is not a complete list of when events may occur. Use the presence of an entitlement to determine if a user has access to your premium features. The Subscription API and related events are intended for reporting and lifecycle management — **they should not be used as the source of truth for whether a user has access to your features**.
+</Info>
+
+| Event | Subscription behavior | Updated fields |
+|---|---|---|
+| `SUBSCRIPTION_CREATE` | Subscription is created | `status` is `0 (active)` if entitlement granted, or `1 (ending)` if not yet granted |
+| `SUBSCRIPTION_UPDATE` | Subscription is granted an entitlement | `status` is `0 (active)` |
+| `SUBSCRIPTION_UPDATE` | Subscription is renewed | `current_period_start`, `current_period_end` timestamps updated |
+| `SUBSCRIPTION_UPDATE` | Subscription is upgraded or downgraded | `sku_ids`, `entitlement_ids`, `renewal_sku_ids` may be updated |
+| `SUBSCRIPTION_UPDATE` | Subscription is canceled | `canceled_at` timestamp updated, `status` is `1 (ending)` |
+| `SUBSCRIPTION_UPDATE` | Subscription ends | `status` is `2 (inactive)` — processed asynchronously, not immediate |
+| `SUBSCRIPTION_UPDATE` | Subscription is resumed by user | `status` is `0 (active)` |
+
+---
+
+## Working with entitlements
+
+When a user purchases a subscription, an [entitlement](/developers/resources/entitlement) is created representing their access to your premium features.
+
+You can use a combination of [Gateway events](/developers/events/gateway-events#entitlements), the [Entitlement HTTP API](/developers/resources/entitlement), and [interaction payloads](/developers/interactions/receiving-and-responding) to track entitlements and grant features accordingly.
+
+### Accessing entitlements with Gateway events
+
+For subscription SKUs, Discord emits the following [entitlement Gateway events](/developers/events/gateway-events#entitlements):
+
+| Event | Description |
+|---|---|
+| `ENTITLEMENT_CREATE` | When a user is granted an entitlement to your subscription SKU |
+| `ENTITLEMENT_UPDATE` | When an entitlement to a subscription SKU ends |
+| `ENTITLEMENT_DELETE` | When Discord refunds a subscription, removes an entitlement, or a developer [deletes a test entitlement](/developers/resources/entitlement#delete-test-entitlement) |
+
+### Accessing entitlements with the HTTP API
+
+For apps that require background processing or are not solely reliant on interactions, use the [List Entitlements](/developers/resources/entitlement#list-entitlements) endpoint to list active and expired entitlements. Filter by user or guild using the `?user_id=XYZ` or `?guild_id=XYZ` query parameters.
+
+For example, you might store entitlements in a database and check whether a user still has access to a SKU before running a scheduled job.
+
+### Accessing entitlements on interaction payloads
+
+Entitlements are also included in interaction payloads. Find them in the `entitlements` field when [receiving and responding to interactions](/developers/interactions/receiving-and-responding). Use this field to check whether the interacting user or their guild is subscribed.
+
+### Accessing entitlements with the Embedded App SDK
+
+When building an [Activity](/developers/activities/overview) with the [Embedded App SDK](/developers/developer-tools/embedded-app-sdk), you can also [access a user's entitlements](/developers/developer-tools/embedded-app-sdk#getentitlements) directly through the SDK.
+
+---
+
+## Prompting users to subscribe
+
+### Responding with a premium button
+
+[Add a premium button](/developers/monetization/managing-skus#responding-with-a-premium-button) to prompt users to subscribe when they attempt to use a feature that requires a subscription. Send a message with a [button](/developers/components/reference#button) using the [premium style](/developers/components/reference#button-button-styles) and a `sku_id`.
+
+### Starting a purchase from an Activity
+
+When using the [Embedded App SDK](/developers/developer-tools/embedded-app-sdk), you can launch the purchase flow for a specific SKU directly from within the Activity.
+
+### Purchasing from the store page
+
+Users can start, upgrade, or downgrade their subscription from your app's [Store page](/developers/monetization/managing-skus#viewing-your-store-page). Link directly to your store using the [Application Directory Store URL scheme](/developers/monetization/managing-skus#linking-to-your-store).
+
+---
+
+## Supporting subscriptions
+
+To support subscriptions, [create a subscription SKU](/developers/monetization/managing-skus#creating-a-sku) and handle the following scenarios.
+
+### Starting a new subscription
+
+| Event | Trigger |
+|---|---|
+| `SUBSCRIPTION_CREATE` | Subscription is initially created. `status` is `0 (active)` if the entitlement has been granted, or `1 (ending)` if not yet granted. |
+| `ENTITLEMENT_CREATE` | User is granted an entitlement for the new subscription. |
+| `SUBSCRIPTION_UPDATE` | Subscription is updated with `entitlement_ids`, `renewal_sku_ids`, and `status` (`0 (active)`). |
+
+### Canceling an existing subscription
+
+Users can cancel at any time from their Subscription settings.
+
+| Event | Trigger |
+|---|---|
+| `SUBSCRIPTION_UPDATE` | Subscription is updated to end with `status` of `1 (ending)` and `canceled_at` set to the cancellation timestamp. |
+
+The user's subscription and entitlement remain valid until `current_period_end`. If not resumed before then:
+
+| Event | Trigger |
+|---|---|
+| `ENTITLEMENT_UPDATE` | Current entitlement ends. `ends_at` is updated with a timestamp. |
+| `SUBSCRIPTION_UPDATE` | Subscription is updated with `status` of `2 (inactive)`. |
+
+### Resuming a canceled subscription
+
+Users can resume their subscription before `current_period_end` from their Subscription settings.
+
+| Event | Trigger |
+|---|---|
+| `SUBSCRIPTION_UPDATE` | Subscription is set to continue with `status` of `0 (active)` and `canceled_at` set to `null`. |
+
+---
+
+## Supporting upgrades and downgrades
+
+If you offer multiple subscription tiers, users can upgrade or downgrade from your [Store page](/developers/monetization/managing-skus#viewing-your-store-page) or their App Subscription settings.
+
+To support multiple tiers, [create multiple subscription SKUs](/developers/monetization/managing-skus#creating-a-sku).
+
+### Upgrading a subscription
+
+When a user upgrades to a same-price or higher-tier subscription, they are charged the difference and the subscription period resets. The current lower-tier entitlement ends immediately.
+
+| Event | Trigger |
+|---|---|
+| `ENTITLEMENT_UPDATE` | Current entitlement ends. `ends_at` is updated with a timestamp. |
+| `ENTITLEMENT_CREATE` | New entitlement is created for the upgraded SKU. |
+| `SUBSCRIPTION_UPDATE` | Subscription is updated with new `entitlement_ids`, `sku_ids`, `current_period_start`, `current_period_end`. |
+
+### Downgrading a subscription
+
+When a user downgrades to a lower-tier subscription, they are not charged immediately. The current plan remains valid until `subscription.current_period_end`.
+
+| Event | Trigger |
+|---|---|
+| `SUBSCRIPTION_UPDATE` | Subscription is updated to reflect the renewal SKU ID in `subscription.renewal_sku_ids`. |
+
+Once the current subscription expires at `current_period_end`:
+
+| Event | Trigger |
+|---|---|
+| `ENTITLEMENT_UPDATE` | Current entitlement ends. `ends_at` is updated with a timestamp. |
+| `ENTITLEMENT_CREATE` | New entitlement is created for the downgraded SKU. |
+| `SUBSCRIPTION_UPDATE` | Subscription is updated with new `entitlement_ids`, `sku_ids`, `current_period_start`, `current_period_end`. |
+
+---
+
+## Using the Subscription API
+
+<Info>
+[Entitlements](/developers/resources/entitlement) are the source of truth for a user's access to a specific SKU. The Subscription API is intended for reporting and lifecycle management outside the flow of user interactions.
+</Info>
+
+Use the [Subscription API](/developers/resources/subscription) to check on the status of your app's subscriptions:
+
+- [List SKU Subscriptions](/developers/resources/subscription#list-sku-subscriptions): List all subscriptions for a specific SKU.
+- [Get SKU Subscription](/developers/resources/subscription#get-sku-subscription): Get a specific subscription.
+- [Subscription Gateway events](/developers/events/gateway-events#subscriptions): Receive gateway events when subscriptions are created, updated, or deleted.
+
+---
+
+## Testing your implementation
+
+### Using test entitlements
+
+Test your implementation by [creating](/developers/resources/entitlement#create-test-entitlement) and [deleting](/developers/resources/entitlement#delete-test-entitlement) test entitlements. These let you simulate both a subscribed and unsubscribed state for a user or guild without going through the payment flow.
+
+<Info>
+Test entitlements do not have `starts_at` or `ends_at` fields — they are valid until deleted.
+</Info>
+
+### Using live entitlements
+
+To test the full payment flow, interact with your Store page or a [premium button](/developers/monetization/implementing-app-subscriptions#prompting-users-to-subscribe). Team members associated with your app automatically receive a **100% discount**, so you can purchase without a live payment method.
+
+After checkout, you will have a live subscription that renews until canceled. You can use it to test subscription renewals. If you cancel, the entitlement remains active until the end of the billing period, shown in the `period_ends_at` field on the [Subscription object](/developers/resources/subscription#subscription-object).
+
+<Info>
+You can only delete entitlements created via the [Create Test Entitlement](/developers/resources/entitlement#create-test-entitlement) endpoint. For toggling access during development, use test entitlements.
+</Info>

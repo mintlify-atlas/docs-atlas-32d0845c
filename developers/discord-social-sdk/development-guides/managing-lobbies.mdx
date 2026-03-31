@@ -1,0 +1,236 @@
+---
+title: Creating and managing lobbies
+sidebarTitle: Managing lobbies
+description: Create and manage game lobbies with the Discord Social SDK for multiplayer sessions and in-game chat.
+---
+
+<Warning>
+Lobby features are currently rate limited for development and testing. Before using lobbies in a production release, you must apply for increased rate limits through the Developer Portal. See [Communication Features](/developers/discord-social-sdk/core-concepts) for details.
+</Warning>
+
+## Overview
+
+Lobbies are groups of users that can communicate via text and voice.
+
+This guide will show you how to:
+
+- Create and manage lobbies
+- Handle lobby membership
+- Send and receive messages in lobbies
+- Retrieve chat history
+
+### Prerequisites
+
+Before you begin:
+
+- Set up the Discord Social SDK using the [Getting Started guide](/developers/discord-social-sdk/getting-started)
+
+<Warning>
+Lobby features require the `openid sdk.social_layer` scopes (the communication scopes). Use `Client::GetDefaultCommunicationScopes` in your authorization flow.
+</Warning>
+
+---
+
+## Lobby features
+
+Lobbies are groups of users that can communicate via text and voice. Users can be in multiple lobbies at once. A lobby can also have metadata (an arbitrary JSON blob) associated with the lobby and each user.
+
+### Lobby limits
+
+- **Maximum members:** 1,000 per lobby
+- **Maximum lobbies per user per game:** 100
+- **Voice calls:** Recommended maximum of 25 participants for optimal performance
+
+<Note>
+Contact Developer Support if you need more than 1,000 members in a lobby or more than 25 participants in a voice call.
+</Note>
+
+### Text chat
+
+All lobby members can send and receive messages in the lobby's text channel.
+
+### Voice chat
+
+Lobbies support voice calls. While lobbies technically support 1,000 members, keep voice calls to 25 members or fewer for best performance.
+
+---
+
+## Managing lobbies
+
+There are two ways to manage lobbies: from your server using the Discord HTTP API, or from the client using the SDK.
+
+### Server-side lobby management
+
+Use the Discord HTTP API to create, update, and delete lobbies and manage membership. See the [Lobby API resource](/developers/discord-social-sdk/development-guides/managing-lobbies) for available endpoints and [Use with Discord APIs](/developers/discord-social-sdk/how-to) for authentication details.
+
+<Info>
+Clients cannot use `Client::CreateOrJoinLobby` or `Client::LeaveLobby` with lobbies created using the server-side API.
+</Info>
+
+### Client-side lobby management
+
+The SDK creates and joins lobbies using a shared lobby secret. Anyone with the secret can join the lobby. If no lobby with that secret exists, a new one is created automatically.
+
+```cpp
+// Create or join a lobby using a shared secret
+client->CreateOrJoinLobby("your-unique-lobby-secret",
+    [client](discordpp::ClientResult result, uint64_t lobbyId) {
+        if (result.Successful()) {
+            std::cout << "Lobby created or joined! Lobby ID: " << lobbyId << std::endl;
+        } else {
+            std::cerr << "Lobby creation/join failed\n";
+        }
+    });
+```
+
+Key behaviors:
+
+- Lobby secrets are unique per game (application). Use a new secret to generate a new lobby for each match.
+- Calling `Client::LeaveLobby` then `Client::CreateOrJoinLobby` with the same secret re-adds you to the same lobby.
+- Calling `Client::CreateOrJoinLobby` while already in a lobby updates your metadata (if included).
+- The lobby secret can be embedded in rich presence to support game invite flows. See [Creating lobby invites](/developers/discord-social-sdk/development-guides/managing-lobbies#creating-lobby-invites) below.
+
+#### Leaving a lobby
+
+```cpp
+uint64_t lobbyId = 1234567890;
+
+client->LeaveLobby(lobbyId, [lobbyId](discordpp::ClientResult result) {
+    if (result.Successful()) {
+        std::cout << "Left lobby: " << lobbyId << std::endl;
+    } else {
+        std::cerr << "Failed to leave lobby\n";
+    }
+});
+```
+
+Only lobbies created with `Client::CreateOrJoinLobby` can be left using `Client::LeaveLobby`.
+
+### Lobby lifecycle
+
+Lobbies are ephemeral and support automatic cleanup via a **max idle time**. If a lobby has no connected members for longer than the idle time, it is automatically deleted. As long as at least one person is connected, the lobby persists and the timer resets.
+
+- **Default idle time:** 5 minutes
+- **Maximum idle time:** 7 days
+
+<Info>
+Lobby secrets used with `Client::CreateOrJoinLobby` expire after 30 days. The lobby still exists after expiry, but new users cannot join using that secret.
+</Info>
+
+---
+
+## Sending messages to a lobby
+
+Send a text message to all lobby members:
+
+```cpp
+uint64_t lobbyId = 1234567890;
+
+client->SendLobbyMessage(lobbyId, "Hello!",
+    [](discordpp::ClientResult result, uint64_t messageId) {
+        if (result.Successful()) {
+            std::cout << "Message sent! Message ID: " << messageId << std::endl;
+        } else {
+            std::cerr << "Message sending failed\n";
+        }
+    });
+```
+
+Any lobby member can send messages, regardless of whether they joined via client or server-side methods.
+
+---
+
+## Receiving lobby messages
+
+Register a callback to receive new messages from lobbies and DMs:
+
+```cpp
+client->SetMessageCreatedCallback([&client](uint64_t messageId) {
+    discordpp::MessageHandle message = client->GetMessageHandle(messageId);
+    std::cout << "New message: " << message.Content() << "\n";
+});
+```
+
+From the `messageId` you can fetch the `MessageHandle` and then the `ChannelHandle` to determine where the message was sent.
+
+---
+
+## Getting lobby chat history
+
+Retrieve previous messages from a lobby using `Client::GetLobbyMessagesWithLimit`:
+
+```cpp
+const uint64_t lobbyId = 1234567890;
+const uint32_t messageLimit = 50; // Maximum is 200
+
+client->GetLobbyMessagesWithLimit(
+    lobbyId,
+    messageLimit,
+    [](const discordpp::ClientResult& result,
+       const std::vector<discordpp::MessageHandle>& messages) {
+        if (result.Successful()) {
+            std::cout << "Retrieved " << messages.size()
+                      << " messages from chat history\n";
+
+            // Messages are returned in chronological order (oldest first)
+            for (const auto& message : messages) {
+                std::cout << "Message: " << message.Content() << std::endl;
+            }
+        } else {
+            std::cerr << "Failed to retrieve chat history\n";
+        }
+    });
+```
+
+**Limitations:**
+
+- Maximum of 200 messages per request
+- Maximum of 72 hours of history
+- Only messages from lobbies the user is currently a member of can be retrieved
+
+Messages are returned as `MessageHandle` objects in chronological order (oldest first). Each handle contains the message content, author information, and timestamp.
+
+---
+
+## Linking a channel to a lobby
+
+Connect a lobby to a Discord text channel using Linked Channels. This allows users to chat in Discord even when they're not in the game. See the [Linked Channels guide](/developers/discord-social-sdk/development-guides/managing-lobbies) for implementation details.
+
+---
+
+## Creating lobby invites
+
+Use rich presence to allow players to invite friends to an existing lobby. Set the join secret in your rich presence to the lobby secret, then handle incoming invite acceptances to join the lobby.
+
+See the [Managing Game Invites guide](/developers/discord-social-sdk/development-guides/managing-lobbies
+
+---
+
+## Voice chat in lobbies
+
+Voice calls in lobbies are covered in the [Managing Voice Chat guide](/developers/discord-social-sdk/development-guides/managing-voice-chat).
+
+---
+
+## Next steps
+
+<CardGroup cols={3}>
+  <Card title="Managing voice chat" href="/developers/discord-social-sdk/development-guides/managing-voice-chat">
+    Add voice communication to your lobbies.
+  </Card>
+  <Card title="Managing game invites" href="/developers/discord-social-sdk/development-guides/managing-lobbies">
+    Allow players to invite friends to join their game session or party.
+  </Card>
+  <Card title="Linked channels" href="/developers/discord-social-sdk/development-guides/managing-lobbies">
+    Connect lobbies to Discord text channels.
+  </Card>
+</CardGroup>
+
+---
+
+## Change log
+
+| Date | Changes |
+|------|---------|
+| June 30, 2025 | Add communications scope warning |
+| March 17, 2025 | Initial release |

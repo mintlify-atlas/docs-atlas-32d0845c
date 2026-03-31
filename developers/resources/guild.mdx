@@ -1,0 +1,900 @@
+---
+title: Guild
+description: Reference for Discord guild (server) objects, features, and management endpoints.
+---
+
+Guilds in Discord represent an isolated collection of users and channels, and are often referred to as "servers" in the UI.
+
+## Guild object
+
+<Info>
+Fields specific to the `GUILD_CREATE` event are listed in the [Gateway Events documentation](/developers/events/gateway-events#guild-create).
+</Info>
+
+### Guild structure
+
+<ResponseField name="id" type="snowflake" required>
+  Guild id
+</ResponseField>
+
+<ResponseField name="name" type="string" required>
+  Guild name (2-100 characters, excluding trailing and leading whitespace)
+</ResponseField>
+
+<ResponseField name="icon" type="?string" required>
+  [Icon hash](/developers/reference#image-formatting)
+</ResponseField>
+
+<ResponseField name="icon_hash" type="?string">
+  [Icon hash](/developers/reference#image-formatting), returned when in the template object
+</ResponseField>
+
+<ResponseField name="splash" type="?string" required>
+  [Splash hash](/developers/reference#image-formatting)
+</ResponseField>
+
+<ResponseField name="discovery_splash" type="?string" required>
+  [Discovery splash hash](/developers/reference#image-formatting); only present for guilds with the `DISCOVERABLE` feature
+</ResponseField>
+
+<ResponseField name="owner" type="boolean">
+  True if the user is the owner of the guild. Only sent when using the Get Current User Guilds endpoint.
+</ResponseField>
+
+<ResponseField name="owner_id" type="snowflake" required>
+  ID of owner
+</ResponseField>
+
+<ResponseField name="permissions" type="string">
+  Total permissions for the user in the guild (excludes overwrites and implicit permissions). Only sent when using the Get Current User Guilds endpoint.
+</ResponseField>
+
+<ResponseField name="afk_channel_id" type="?snowflake" required>
+  ID of afk channel
+</ResponseField>
+
+<ResponseField name="afk_timeout" type="integer" required>
+  AFK timeout in seconds
+</ResponseField>
+
+<ResponseField name="widget_enabled" type="boolean">
+  True if the server widget is enabled
+</ResponseField>
+
+<ResponseField name="widget_channel_id" type="?snowflake">
+  The channel id that the widget will generate an invite to, or `null` if set to no invite
+</ResponseField>
+
+<ResponseField name="verification_level" type="integer" required>
+  [Verification level](/developers/resources/guild#verification-level) required for the guild
+</ResponseField>
+
+<ResponseField name="default_message_notifications" type="integer" required>
+  Default [message notifications level](/developers/resources/guild#default-message-notification-level)
+</ResponseField>
+
+<ResponseField name="explicit_content_filter" type="integer" required>
+  [Explicit content filter level](/developers/resources/guild#explicit-content-filter-level)
+</ResponseField>
+
+<ResponseField name="roles" type="array of role objects" required>
+  Roles in the guild
+</ResponseField>
+
+<ResponseField name="emojis" type="array of emoji objects" required>
+  Custom guild emojis
+</ResponseField>
+
+<ResponseField name="features" type="array of guild feature strings" required>
+  Enabled guild features
+</ResponseField>
+
+<ResponseField name="mfa_level" type="integer" required>
+  Required [MFA level](/developers/resources/guild#mfa-level) for the guild
+</ResponseField>
+
+<ResponseField name="application_id" type="?snowflake" required>
+  Application id of the guild creator if it is bot-created
+</ResponseField>
+
+<ResponseField name="system_channel_id" type="?snowflake" required>
+  The id of the channel where guild notices such as welcome messages and boost events are posted
+</ResponseField>
+
+<ResponseField name="system_channel_flags" type="integer" required>
+  [System channel flags](/developers/resources/guild#system-channel-flags)
+</ResponseField>
+
+<ResponseField name="rules_channel_id" type="?snowflake" required>
+  The id of the channel where Community guilds can display rules and/or guidelines
+</ResponseField>
+
+<ResponseField name="max_presences" type="?integer">
+  The maximum number of presences for the guild (`null` is always returned, apart from the largest of guilds)
+</ResponseField>
+
+<ResponseField name="max_members" type="integer">
+  The maximum number of members for the guild
+</ResponseField>
+
+<ResponseField name="vanity_url_code" type="?string" required>
+  The vanity url code for the guild
+</ResponseField>
+
+<ResponseField name="description" type="?string" required>
+  The description of a guild
+</ResponseField>
+
+<ResponseField name="banner" type="?string" required>
+  [Banner hash](/developers/reference#image-formatting)
+</ResponseField>
+
+<ResponseField name="premium_tier" type="integer" required>
+  [Premium tier](/developers/resources/guild#premium-tier) (Server Boost level)
+</ResponseField>
+
+<ResponseField name="premium_subscription_count" type="integer">
+  The number of boosts this guild currently has
+</ResponseField>
+
+<ResponseField name="preferred_locale" type="string" required>
+  The preferred locale of a Community guild; used in server discovery and notices from Discord; defaults to "en-US"
+</ResponseField>
+
+<ResponseField name="public_updates_channel_id" type="?snowflake" required>
+  The id of the channel where admins and moderators of Community guilds receive notices from Discord
+</ResponseField>
+
+<ResponseField name="max_video_channel_users" type="integer">
+  The maximum amount of users in a video channel
+</ResponseField>
+
+<ResponseField name="max_stage_video_channel_users" type="integer">
+  The maximum amount of users in a stage video channel
+</ResponseField>
+
+<ResponseField name="approximate_member_count" type="integer">
+  Approximate number of members in this guild. Returned when `with_counts` is `true`.
+</ResponseField>
+
+<ResponseField name="approximate_presence_count" type="integer">
+  Approximate number of non-offline members in this guild. Returned when `with_counts` is `true`.
+</ResponseField>
+
+<ResponseField name="welcome_screen" type="welcome screen object">
+  The welcome screen of a Community guild, shown to new members
+</ResponseField>
+
+<ResponseField name="nsfw_level" type="integer" required>
+  [Guild age-restriction level](/developers/resources/guild#guild-nsfw-level)
+</ResponseField>
+
+<ResponseField name="stickers" type="array of sticker objects">
+  Custom guild stickers
+</ResponseField>
+
+<ResponseField name="premium_progress_bar_enabled" type="boolean" required>
+  Whether the guild has the boost progress bar enabled
+</ResponseField>
+
+<ResponseField name="safety_alerts_channel_id" type="?snowflake" required>
+  The id of the channel where admins and moderators of Community guilds receive safety alerts from Discord
+</ResponseField>
+
+<ResponseField name="incidents_data" type="?incidents data object" required>
+  The incidents data for this guild
+</ResponseField>
+
+## Default message notification level
+
+| Key             | Value | Description                                                                        |
+|-----------------|-------|------------------------------------------------------------------------------------|
+| `ALL_MESSAGES`  | 0     | Members will receive notifications for all messages by default                     |
+| `ONLY_MENTIONS` | 1     | Members will receive notifications only for messages that @mention them by default |
+
+## Explicit content filter level
+
+| Level                   | Integer | Description                                                 |
+|-------------------------|---------|-------------------------------------------------------------|
+| `DISABLED`              | 0       | Media content will not be scanned                           |
+| `MEMBERS_WITHOUT_ROLES` | 1       | Media content sent by members without roles will be scanned |
+| `ALL_MEMBERS`           | 2       | Media content sent by all members will be scanned           |
+
+## MFA level
+
+| Level      | Integer | Description                                             |
+|------------|---------|---------------------------------------------------------|
+| `NONE`     | 0       | Guild has no MFA/2FA requirement for moderation actions |
+| `ELEVATED` | 1       | Guild has a 2FA requirement for moderation actions      |
+
+## Verification level
+
+| Level       | Integer | Description                                               |
+|-------------|---------|-----------------------------------------------------------|
+| `NONE`      | 0       | Unrestricted                                              |
+| `LOW`       | 1       | Must have verified email on account                       |
+| `MEDIUM`    | 2       | Must be registered on Discord for longer than 5 minutes   |
+| `HIGH`      | 3       | Must be a member of the server for longer than 10 minutes |
+| `VERY_HIGH` | 4       | Must have a verified phone number                         |
+
+## Guild NSFW level
+
+| Level            | Value |
+|------------------|-------|
+| `DEFAULT`        | 0     |
+| `EXPLICIT`       | 1     |
+| `SAFE`           | 2     |
+| `AGE_RESTRICTED` | 3     |
+
+## Premium tier
+
+| Level    | Integer | Description                                   |
+|----------|---------|-----------------------------------------------|
+| `NONE`   | 0       | Guild has not unlocked any Server Boost perks |
+| `TIER_1` | 1       | Guild has unlocked Server Boost level 1 perks |
+| `TIER_2` | 2       | Guild has unlocked Server Boost level 2 perks |
+| `TIER_3` | 3       | Guild has unlocked Server Boost level 3 perks |
+
+## System channel flags
+
+| Flag                                                       | Value    | Description                                                   |
+|------------------------------------------------------------|----------|---------------------------------------------------------------|
+| `SUPPRESS_JOIN_NOTIFICATIONS`                              | `1 << 0` | Suppress member join notifications                            |
+| `SUPPRESS_PREMIUM_SUBSCRIPTIONS`                           | `1 << 1` | Suppress server boost notifications                           |
+| `SUPPRESS_GUILD_REMINDER_NOTIFICATIONS`                    | `1 << 2` | Suppress server setup tips                                    |
+| `SUPPRESS_JOIN_NOTIFICATION_REPLIES`                       | `1 << 3` | Hide member join sticker reply buttons                        |
+| `SUPPRESS_ROLE_SUBSCRIPTION_PURCHASE_NOTIFICATIONS`        | `1 << 4` | Suppress role subscription purchase and renewal notifications |
+| `SUPPRESS_ROLE_SUBSCRIPTION_PURCHASE_NOTIFICATION_REPLIES` | `1 << 5` | Hide role subscription sticker reply buttons                  |
+
+## Guild features
+
+| Feature                                     | Description                                                              |
+|---------------------------------------------|--------------------------------------------------------------------------|
+| `ANIMATED_BANNER`                           | Guild has access to set an animated guild banner image                   |
+| `ANIMATED_ICON`                             | Guild has access to set an animated guild icon                           |
+| `APPLICATION_COMMAND_PERMISSIONS_V2`        | Guild is using the old permissions configuration behavior                |
+| `AUTO_MODERATION`                           | Guild has set up auto moderation rules                                   |
+| `BANNER`                                    | Guild has access to set a guild banner image                             |
+| `COMMUNITY`                                 | Guild can enable welcome screen, Membership Screening, and stage channels |
+| `CREATOR_MONETIZABLE_PROVISIONAL`           | Guild has enabled monetization                                           |
+| `CREATOR_STORE_PAGE`                        | Guild has enabled the role subscription promo page                       |
+| `DEVELOPER_SUPPORT_SERVER`                  | Guild has been set as a support server on the App Directory              |
+| `DISCOVERABLE`                              | Guild is able to be discovered in the directory                          |
+| `FEATURABLE`                                | Guild is able to be featured in the directory                            |
+| `INVITES_DISABLED`                          | Guild has paused invites, preventing new users from joining              |
+| `INVITE_SPLASH`                             | Guild has access to set an invite splash background                      |
+| `MEMBER_VERIFICATION_GATE_ENABLED`          | Guild has enabled Membership Screening                                   |
+| `MORE_SOUNDBOARD`                           | Guild has increased custom soundboard sound slots                        |
+| `MORE_STICKERS`                             | Guild has increased custom sticker slots                                 |
+| `NEWS`                                      | Guild has access to create announcement channels                         |
+| `PARTNERED`                                 | Guild is partnered                                                       |
+| `PREVIEW_ENABLED`                           | Guild can be previewed before joining via Membership Screening           |
+| `RAID_ALERTS_DISABLED`                      | Guild has disabled alerts for join raids in the safety alerts channel    |
+| `ROLE_ICONS`                                | Guild is able to set role icons                                          |
+| `ROLE_SUBSCRIPTIONS_AVAILABLE_FOR_PURCHASE` | Guild has role subscriptions that can be purchased                       |
+| `ROLE_SUBSCRIPTIONS_ENABLED`                | Guild has enabled role subscriptions                                     |
+| `SOUNDBOARD`                                | Guild has created soundboard sounds                                      |
+| `TICKETED_EVENTS_ENABLED`                   | Guild has enabled ticketed events                                        |
+| `VANITY_URL`                                | Guild has access to set a vanity URL                                     |
+| `VERIFIED`                                  | Guild is verified                                                        |
+| `VIP_REGIONS`                               | Guild has access to set 384kbps bitrate in voice                         |
+| `WELCOME_SCREEN_ENABLED`                    | Guild has enabled the welcome screen                                     |
+| `GUESTS_ENABLED`                            | Guild has access to guest invites                                        |
+| `GUILD_TAGS`                                | Guild has access to set guild tags                                       |
+| `ENHANCED_ROLE_COLORS`                      | Guild is able to set gradient colors to roles                            |
+
+### Mutable guild features
+
+| Feature              | Required permissions | Effects                                                   |
+|----------------------|----------------------|-----------------------------------------------------------|
+| `COMMUNITY`          | Administrator        | Enables Community Features in the guild                   |
+| `DISCOVERABLE`       | Administrator*       | Enables discovery in the guild, making it publicly listed |
+| `INVITES_DISABLED`   | Manage Guild         | Pauses all invites/access to the server                   |
+| `RAID_ALERTS_DISABLED` | Manage Guild       | Disables alerts for join raids                            |
+
+\* Server must also be passing all discovery requirements.
+
+### Example guild
+
+```json
+{
+  "id": "197038439483310086",
+  "name": "Discord Testers",
+  "icon": "f64c482b807da4f539cff778d174971c",
+  "description": "The official place to report Discord Bugs!",
+  "splash": null,
+  "discovery_splash": null,
+  "features": ["ANIMATED_ICON", "VERIFIED", "NEWS", "VANITY_URL", "DISCOVERABLE"],
+  "emojis": [],
+  "banner": "9b6439a7de04f1d26af92f84ac9e1e4a",
+  "owner_id": "73193882359173120",
+  "application_id": null,
+  "region": null,
+  "afk_channel_id": null,
+  "afk_timeout": 300,
+  "system_channel_id": null,
+  "widget_enabled": true,
+  "widget_channel_id": null,
+  "verification_level": 3,
+  "roles": [],
+  "default_message_notifications": 1,
+  "mfa_level": 1,
+  "explicit_content_filter": 2,
+  "vanity_url_code": "discord-testers",
+  "premium_tier": 3,
+  "premium_subscription_count": 33,
+  "system_channel_flags": 0,
+  "preferred_locale": "en-US",
+  "rules_channel_id": "441688182833020939",
+  "public_updates_channel_id": "281283303326089216",
+  "safety_alerts_channel_id": "281283303326089216"
+}
+```
+
+## Guild member object
+
+### Guild member structure
+
+<ResponseField name="user" type="user object">
+  The user this guild member represents. Not included in the member object attached to `MESSAGE_CREATE` and `MESSAGE_UPDATE` gateway events.
+</ResponseField>
+
+<ResponseField name="nick" type="?string">
+  This user's guild nickname
+</ResponseField>
+
+<ResponseField name="avatar" type="?string">
+  The member's guild avatar hash
+</ResponseField>
+
+<ResponseField name="banner" type="?string">
+  The member's guild banner hash
+</ResponseField>
+
+<ResponseField name="roles" type="array of snowflakes" required>
+  Array of role object ids
+</ResponseField>
+
+<ResponseField name="joined_at" type="?ISO8601 timestamp" required>
+  When the user joined the guild
+</ResponseField>
+
+<ResponseField name="premium_since" type="?ISO8601 timestamp">
+  When the user started boosting the guild
+</ResponseField>
+
+<ResponseField name="deaf" type="boolean" required>
+  Whether the user is deafened in voice channels
+</ResponseField>
+
+<ResponseField name="mute" type="boolean" required>
+  Whether the user is muted in voice channels
+</ResponseField>
+
+<ResponseField name="flags" type="integer" required>
+  Guild member flags represented as a bit set, defaults to `0`
+</ResponseField>
+
+<ResponseField name="pending" type="boolean">
+  Whether the user has not yet passed the guild's Membership Screening requirements
+</ResponseField>
+
+<ResponseField name="permissions" type="string">
+  Total permissions of the member in the channel, including overwrites, returned when in the interaction object
+</ResponseField>
+
+<ResponseField name="communication_disabled_until" type="?ISO8601 timestamp">
+  When the user's timeout will expire and the user will be able to communicate in the guild again, null or a time in the past if the user is not timed out
+</ResponseField>
+
+<ResponseField name="avatar_decoration_data" type="?avatar decoration data object">
+  Data for the member's guild avatar decoration
+</ResponseField>
+
+### Guild member flags
+
+| Flag                              | Value     | Description                                                                  | Editable |
+|-----------------------------------|-----------|------------------------------------------------------------------------------|----------|
+| `DID_REJOIN`                      | `1 << 0`  | Member has left and rejoined the guild                                       | false    |
+| `COMPLETED_ONBOARDING`            | `1 << 1`  | Member has completed onboarding                                              | false    |
+| `BYPASSES_VERIFICATION`           | `1 << 2`  | Member is exempt from guild verification requirements                        | true     |
+| `STARTED_ONBOARDING`              | `1 << 3`  | Member has started onboarding                                                | false    |
+| `IS_GUEST`                        | `1 << 4`  | Member is a guest and can only access the voice channel they were invited to | false    |
+| `STARTED_HOME_ACTIONS`            | `1 << 5`  | Member has started Server Guide new member actions                           | false    |
+| `COMPLETED_HOME_ACTIONS`          | `1 << 6`  | Member has completed Server Guide new member actions                         | false    |
+| `AUTOMOD_QUARANTINED_USERNAME`    | `1 << 7`  | Member's username, display name, or nickname is blocked by AutoMod           | false    |
+| `DM_SETTINGS_UPSELL_ACKNOWLEDGED` | `1 << 9`  | Member has dismissed the DM settings upsell                                  | false    |
+| `AUTOMOD_QUARANTINED_GUILD_TAG`   | `1 << 10` | Member's guild tag is blocked by AutoMod                                     | false    |
+
+## Ban object
+
+<ResponseField name="reason" type="?string" required>
+  The reason for the ban
+</ResponseField>
+
+<ResponseField name="user" type="user object" required>
+  The banned user
+</ResponseField>
+
+## Welcome screen object
+
+<ResponseField name="description" type="?string" required>
+  The server description shown in the welcome screen
+</ResponseField>
+
+<ResponseField name="welcome_channels" type="array of welcome screen channel objects" required>
+  The channels shown in the welcome screen, up to 5
+</ResponseField>
+
+### Welcome screen channel structure
+
+<ResponseField name="channel_id" type="snowflake" required>
+  The channel's id
+</ResponseField>
+
+<ResponseField name="description" type="string" required>
+  The description shown for the channel
+</ResponseField>
+
+<ResponseField name="emoji_id" type="?snowflake" required>
+  The emoji id, if the emoji is custom
+</ResponseField>
+
+<ResponseField name="emoji_name" type="?string" required>
+  The emoji name if custom, the unicode character if standard, or `null` if no emoji is set
+</ResponseField>
+
+## Incidents data object
+
+<ResponseField name="invites_disabled_until" type="?ISO8601 timestamp" required>
+  When invites get enabled again
+</ResponseField>
+
+<ResponseField name="dms_disabled_until" type="?ISO8601 timestamp" required>
+  When direct messages get enabled again
+</ResponseField>
+
+<ResponseField name="dm_spam_detected_at" type="?ISO8601 timestamp">
+  When the DM spam was detected
+</ResponseField>
+
+<ResponseField name="raid_detected_at" type="?ISO8601 timestamp">
+  When the raid was detected
+</ResponseField>
+
+---
+
+## Get guild
+
+<Note>
+**GET** `/guilds/{guild.id}`
+</Note>
+
+Returns the [guild](/developers/resources/guild#guild-object) object for the given id. If `with_counts` is set to `true`, this endpoint will also return `approximate_member_count` and `approximate_presence_count` for the guild.
+
+### Query string params
+
+<ParamField query="with_counts" type="boolean" default="false">
+  When `true`, will return approximate member and presence counts for the guild
+</ParamField>
+
+## Get guild preview
+
+<Note>
+**GET** `/guilds/{guild.id}/preview`
+</Note>
+
+Returns the [guild preview](/developers/resources/guild#guild-preview-object) object for the given id. If the user is not in the guild, then the guild must be discoverable.
+
+## Modify guild
+
+<Note>
+**PATCH** `/guilds/{guild.id}`
+</Note>
+
+Modify a guild's settings. Requires the `MANAGE_GUILD` permission. Returns the updated [guild](/developers/resources/guild#guild-object) object on success.
+
+<Note>
+All parameters to this endpoint are optional.
+</Note>
+
+<Info>
+This endpoint supports the `X-Audit-Log-Reason` header.
+</Info>
+
+<Warning>
+Attempting to add or remove the `COMMUNITY` guild feature requires the `ADMINISTRATOR` permission.
+</Warning>
+
+### JSON params
+
+<ParamField body="name" type="string">
+  Guild name
+</ParamField>
+
+<ParamField body="verification_level" type="?integer">
+  Verification level
+</ParamField>
+
+<ParamField body="default_message_notifications" type="?integer">
+  Default message notification level
+</ParamField>
+
+<ParamField body="explicit_content_filter" type="?integer">
+  Explicit content filter level
+</ParamField>
+
+<ParamField body="afk_channel_id" type="?snowflake">
+  ID for afk channel
+</ParamField>
+
+<ParamField body="afk_timeout" type="integer">
+  AFK timeout in seconds; can be set to: 60, 300, 900, 1800, 3600
+</ParamField>
+
+<ParamField body="icon" type="?image data">
+  Base64 1024x1024 png/jpeg/gif image for the guild icon
+</ParamField>
+
+<ParamField body="splash" type="?image data">
+  Base64 16:9 png/jpeg image for the guild splash
+</ParamField>
+
+<ParamField body="discovery_splash" type="?image data">
+  Base64 16:9 png/jpeg image for the guild discovery splash
+</ParamField>
+
+<ParamField body="banner" type="?image data">
+  Base64 16:9 png/jpeg image for the guild banner
+</ParamField>
+
+<ParamField body="system_channel_id" type="?snowflake">
+  The id of the channel where guild notices are posted
+</ParamField>
+
+<ParamField body="system_channel_flags" type="integer">
+  System channel flags
+</ParamField>
+
+<ParamField body="rules_channel_id" type="?snowflake">
+  The id of the channel where Community guilds display rules
+</ParamField>
+
+<ParamField body="public_updates_channel_id" type="?snowflake">
+  The id of the channel where admins and moderators receive notices from Discord
+</ParamField>
+
+<ParamField body="preferred_locale" type="?string">
+  The preferred locale of a Community guild; defaults to "en-US"
+</ParamField>
+
+<ParamField body="features" type="array of strings">
+  Enabled guild features
+</ParamField>
+
+<ParamField body="description" type="?string">
+  The description for the guild
+</ParamField>
+
+<ParamField body="premium_progress_bar_enabled" type="boolean">
+  Whether the guild's boost progress bar should be enabled
+</ParamField>
+
+<ParamField body="safety_alerts_channel_id" type="?snowflake">
+  The id of the channel where admins and moderators receive safety alerts from Discord
+</ParamField>
+
+## Get guild channels
+
+<Note>
+**GET** `/guilds/{guild.id}/channels`
+</Note>
+
+Returns a list of guild [channel](/developers/resources/channel#channel-object) objects. Does not include threads.
+
+## Create guild channel
+
+<Note>
+**POST** `/guilds/{guild.id}/channels`
+</Note>
+
+Create a new channel object for the guild. Requires the `MANAGE_CHANNELS` permission. Returns the new [channel](/developers/resources/channel#channel-object) object on success.
+
+<Info>
+This endpoint supports the `X-Audit-Log-Reason` header.
+</Info>
+
+### JSON params
+
+| Field                                | Type       | Description                                                  | Channel type                                   |
+|--------------------------------------|------------|--------------------------------------------------------------|------------------------------------------------|
+| `name`                               | string     | Channel name (1-100 characters)                              | All                                            |
+| `type`                               | integer    | The type of channel                                          | All                                            |
+| `topic`                              | string     | Channel topic (0-1024 characters)                            | Text, Announcement, Forum, Media               |
+| `bitrate`                            | integer    | Bitrate in bits per second; min 8000                         | Voice, Stage                                   |
+| `user_limit`                         | integer    | The user limit of the voice channel                          | Voice, Stage                                   |
+| `rate_limit_per_user`                | integer    | Slowmode in seconds (0-21600)                                | Text, Voice, Stage, Forum, Media               |
+| `position`                           | integer    | Sorting position of the channel                              | All                                            |
+| `permission_overwrites`              | array      | The channel's permission overwrites                          | All                                            |
+| `parent_id`                          | snowflake  | ID of the parent category for a channel                      | Text, Voice, Announcement, Stage, Forum, Media |
+| `nsfw`                               | boolean    | Whether the channel is age-restricted                        | Text, Voice, Announcement, Stage, Forum        |
+| `rtc_region`                         | string     | Channel voice region id                                      | Voice, Stage                                   |
+| `video_quality_mode`                 | integer    | Camera video quality mode                                    | Voice, Stage                                   |
+| `default_auto_archive_duration`      | integer    | Default thread auto-archive duration in minutes              | Text, Announcement, Forum, Media               |
+| `default_reaction_emoji`             | object     | Emoji to show in the add reaction button on a thread         | Forum, Media                                   |
+| `available_tags`                     | array      | Set of tags that can be used in a forum/media channel        | Forum, Media                                   |
+| `default_sort_order`                 | integer    | Default sort order type                                      | Forum, Media                                   |
+| `default_forum_layout`               | integer    | Default forum layout view                                    | Forum                                          |
+| `default_thread_rate_limit_per_user` | integer    | Initial rate limit for newly created threads                 | Text, Announcement, Forum, Media               |
+
+## Modify guild channel positions
+
+<Note>
+**PATCH** `/guilds/{guild.id}/channels`
+</Note>
+
+Modify the positions of a set of channel objects for the guild. Requires `MANAGE_CHANNELS` permission. Returns a 204 empty response on success.
+
+### JSON params (array)
+
+<ParamField body="id" type="snowflake" required>
+  Channel id
+</ParamField>
+
+<ParamField body="position" type="?integer">
+  Sorting position of the channel
+</ParamField>
+
+<ParamField body="lock_permissions" type="?boolean">
+  Syncs the permission overwrites with the new parent, if moving to a new category
+</ParamField>
+
+<ParamField body="parent_id" type="?snowflake">
+  The new parent ID for the channel that is moved
+</ParamField>
+
+## List active guild threads
+
+<Note>
+**GET** `/guilds/{guild.id}/threads/active`
+</Note>
+
+Returns all active threads in the guild, including public and private threads. Threads are ordered by their `id`, in descending order.
+
+## Get guild member
+
+<Note>
+**GET** `/guilds/{guild.id}/members/{user.id}`
+</Note>
+
+Returns a [guild member](/developers/resources/guild#guild-member-object) object for the specified user.
+
+## List guild members
+
+<Note>
+**GET** `/guilds/{guild.id}/members`
+</Note>
+
+Returns a list of [guild member](/developers/resources/guild#guild-member-object) objects that are members of the guild.
+
+<Warning>
+This endpoint is restricted according to whether the `GUILD_MEMBERS` Privileged Intent is enabled for your application.
+</Warning>
+
+### Query string params
+
+<ParamField query="limit" type="integer" default="1">
+  Max number of members to return (1-1000)
+</ParamField>
+
+<ParamField query="after" type="snowflake" default="0">
+  The highest user id in the previous page
+</ParamField>
+
+## Search guild members
+
+<Note>
+**GET** `/guilds/{guild.id}/members/search`
+</Note>
+
+Returns a list of [guild member](/developers/resources/guild#guild-member-object) objects whose username or nickname starts with a provided string.
+
+### Query string params
+
+<ParamField query="query" type="string" required>
+  Query string to match username(s) and nickname(s) against
+</ParamField>
+
+<ParamField query="limit" type="integer" default="1">
+  Max number of members to return (1-1000)
+</ParamField>
+
+## Add guild member
+
+<Note>
+**PUT** `/guilds/{guild.id}/members/{user.id}`
+</Note>
+
+Adds a user to the guild, provided you have a valid OAuth2 access token for the user with the `guilds.join` scope. Returns a 201 Created with the [guild member](/developers/resources/guild#guild-member-object) as the body, or 204 No Content if the user is already a member.
+
+### JSON params
+
+<ParamField body="access_token" type="string" required>
+  An OAuth2 access token granted with the `guilds.join` scope for the user you want to add
+</ParamField>
+
+<ParamField body="nick" type="string">
+  Value to set user's nickname to. Requires `MANAGE_NICKNAMES` permission.
+</ParamField>
+
+<ParamField body="roles" type="array of snowflakes">
+  Array of role ids the member is assigned. Requires `MANAGE_ROLES` permission.
+</ParamField>
+
+<ParamField body="mute" type="boolean">
+  Whether the user is muted in voice channels. Requires `MUTE_MEMBERS` permission.
+</ParamField>
+
+<ParamField body="deaf" type="boolean">
+  Whether the user is deafened in voice channels. Requires `DEAFEN_MEMBERS` permission.
+</ParamField>
+
+## Modify guild member
+
+<Note>
+**PATCH** `/guilds/{guild.id}/members/{user.id}`
+</Note>
+
+Modify attributes of a [guild member](/developers/resources/guild#guild-member-object). Returns a 200 OK with the guild member as the body.
+
+<Info>
+This endpoint supports the `X-Audit-Log-Reason` header.
+</Info>
+
+### JSON params
+
+<ParamField body="nick" type="string">
+  Value to set user's nickname to. Requires `MANAGE_NICKNAMES` permission.
+</ParamField>
+
+<ParamField body="roles" type="array of snowflakes">
+  Array of role ids the member is assigned. Requires `MANAGE_ROLES` permission.
+</ParamField>
+
+<ParamField body="mute" type="boolean">
+  Whether the user is muted in voice channels. Requires `MUTE_MEMBERS` permission.
+</ParamField>
+
+<ParamField body="deaf" type="boolean">
+  Whether the user is deafened in voice channels. Requires `DEAFEN_MEMBERS` permission.
+</ParamField>
+
+<ParamField body="channel_id" type="snowflake">
+  ID of channel to move user to (if they are connected to voice). Requires `MOVE_MEMBERS` permission.
+</ParamField>
+
+<ParamField body="communication_disabled_until" type="ISO8601 timestamp">
+  When the user's timeout will expire (up to 28 days in the future). Set to null to remove timeout. Requires `MODERATE_MEMBERS` permission.
+</ParamField>
+
+<ParamField body="flags" type="integer">
+  Guild member flags
+</ParamField>
+
+## Modify current member
+
+<Note>
+**PATCH** `/guilds/{guild.id}/members/@me`
+</Note>
+
+Modifies the current member in a guild. Returns a 200 with the updated member object on success.
+
+<Info>
+This endpoint supports the `X-Audit-Log-Reason` header.
+</Info>
+
+### JSON params
+
+<ParamField body="nick" type="?string">
+  Value to set user's nickname to. Requires `CHANGE_NICKNAME` permission.
+</ParamField>
+
+<ParamField body="banner" type="?string">
+  Data URI base64 encoded banner image
+</ParamField>
+
+<ParamField body="avatar" type="?string">
+  Data URI base64 encoded avatar image
+</ParamField>
+
+<ParamField body="bio" type="?string">
+  Guild member bio
+</ParamField>
+
+## Remove guild member
+
+<Note>
+**DELETE** `/guilds/{guild.id}/members/{user.id}`
+</Note>
+
+Remove a member from a guild. Requires `KICK_MEMBERS` permission. Returns a 204 empty response on success.
+
+## Get guild bans
+
+<Note>
+**GET** `/guilds/{guild.id}/bans`
+</Note>
+
+Returns a list of [ban](/developers/resources/guild#ban-object) objects for the users banned from this guild. Requires the `BAN_MEMBERS` permission.
+
+### Query string params
+
+<ParamField query="limit" type="number" default="1000">
+  Number of users to return (up to maximum 1000)
+</ParamField>
+
+<ParamField query="before" type="snowflake">
+  Consider only users before given user id
+</ParamField>
+
+<ParamField query="after" type="snowflake">
+  Consider only users after given user id
+</ParamField>
+
+## Get guild ban
+
+<Note>
+**GET** `/guilds/{guild.id}/bans/{user.id}`
+</Note>
+
+Returns a [ban](/developers/resources/guild#ban-object) object for the given user or a 404 if the ban cannot be found. Requires the `BAN_MEMBERS` permission.
+
+## Create guild ban
+
+<Note>
+**PUT** `/guilds/{guild.id}/bans/{user.id}`
+</Note>
+
+Create a guild ban, and optionally delete previous messages sent by the banned user. Requires the `BAN_MEMBERS` permission. Returns a 204 empty response on success.
+
+<Info>
+This endpoint supports the `X-Audit-Log-Reason` header.
+</Info>
+
+### JSON params
+
+<ParamField body="delete_message_seconds" type="integer" default="0">
+  Number of seconds to delete messages for, between 0 and 604800 (7 days)
+</ParamField>
+
+## Remove guild ban
+
+<Note>
+**DELETE** `/guilds/{guild.id}/bans/{user.id}`
+</Note>
+
+Remove the ban for a user. Requires the `BAN_MEMBERS` permission. Returns a 204 empty response on success.
+
+## Bulk guild ban
+
+<Note>
+**POST** `/guilds/{guild.id}/bulk-ban`
+</Note>
+
+Ban up to 200 users from a guild. Requires both the `BAN_MEMBERS` and `MANAGE_GUILD` permissions. Returns a 200 response on success, including `banned_users` with the IDs of the banned users and `failed_users` with IDs that could not be banned.
+
+## Add guild member role
+
+<Note>
+**PUT** `/guilds/{guild.id}/members/{user.id}/roles/{role.id}`
+</Note>
+
+Adds a role to a guild member. Requires the `MANAGE_ROLES` permission. Returns a 204 empty response on success.
+
+## Remove guild member role
+
+<Note>
+**DELETE** `/guilds/{guild.id}/members/{user.id}/roles/{role.id}`
+</Note>
+
+Removes a role from a guild member. Requires the `MANAGE_ROLES` permission. Returns a 204 empty response on success.

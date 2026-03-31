@@ -1,0 +1,233 @@
+---
+title: Multiplayer Experience
+description: Design and implement engaging multiplayer experiences in Discord Activities, including instance management, participant tracking, and avatar rendering.
+---
+
+## Activity Instance Management
+
+When a user clicks "Join Application", they expect to enter the same session their friends are participating in — whether it is a shared drawing canvas, a board game, a collaborative playlist, or a first-person shooter. The shared state of that session is called an **application instance**.
+
+The Embedded App SDK lets your app communicate bidirectionally with the Discord client. The `instanceId` is the key that both your application and Discord use to identify which unique instance of an application is active.
+
+### Using `instanceId`
+
+The `instanceId` is available as soon as the SDK is constructed, before the `ready` payload is received:
+
+```javascript
+import {DiscordSDK} from '@discord/embedded-app-sdk';
+const discordSdk = new DiscordSDK(clientId);
+// Available immediately, no need to await ready()
+const instanceId = discordSdk.instanceId;
+```
+
+Use `instanceId` as the key for saving and loading shared data. This ensures all users in the same instance have access to the same state.
+
+#### Instance ID Semantics
+
+- Instance IDs are generated when a user first launches an application in a channel.
+- All users who join the same application receive the same `instanceId`.
+- When all users leave or close the application, the instance ends and its ID is never reused.
+- The next time someone opens the application in that channel, a new `instanceId` is generated.
+
+---
+
+## Instance Participants
+
+Instance participants are the Discord users currently connected to the same application instance. You can fetch the current participants or subscribe to updates:
+
+```javascript
+import {DiscordSDK, Events, type Types} from '@discord/embedded-app-sdk';
+
+const discordSdk = new DiscordSDK('...');
+await discordSdk.ready();
+
+// Fetch current participants
+const participants = await discordSdk.commands.getInstanceConnectedParticipants();
+
+// Subscribe to participant changes
+function updateParticipants(participants: Types.GetActivityInstanceConnectedParticipantsResponse) {
+  // Update your game state or UI
+}
+discordSdk.subscribe(Events.ACTIVITY_INSTANCE_PARTICIPANTS_UPDATE, updateParticipants);
+
+// Unsubscribe when done
+discordSdk.unsubscribe(Events.ACTIVITY_INSTANCE_PARTICIPANTS_UPDATE, updateParticipants);
+```
+
+---
+
+## Render Avatars and Names
+
+### Basic Avatar and Username
+
+```javascript
+// Use the user object returned from authenticate
+const {user} = await discordSdk.commands.authenticate({
+  access_token: accessToken,
+});
+
+let avatarSrc = '';
+if (user.avatar) {
+  avatarSrc = `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png?size=256`;
+} else {
+  // Fall back to a default avatar based on user ID
+  const defaultAvatarIndex = (BigInt(user.id) >> 22n) % 6n;
+  avatarSrc = `https://cdn.discordapp.com/embed/avatars/${defaultAvatarIndex}.png`;
+}
+
+const username = user.global_name ?? `${user.username}#${user.discriminator}`;
+```
+
+### Guild-Specific Avatars and Nicknames
+
+To display a user's guild-specific avatar and nickname, request the `guilds.members.read` scope. Note that this only returns information for the current user. To display guild-specific data for all participants, retrieve and serve it from your application's server.
+
+```javascript
+const {user} = await discordSdk.commands.authenticate({
+  access_token: accessToken,
+});
+
+fetch(`https://discord.com/api/users/@me/guilds/${discordSdk.guildId}/member`, {
+  method: 'GET',
+  headers: {
+    Authorization: `Bearer ${accessToken}`,
+  },
+})
+  .then((response) => response.json())
+  .then((guildsMembersRead) => {
+    let guildAvatarSrc = '';
+
+    if (guildsMembersRead?.avatar) {
+      guildAvatarSrc = `https://cdn.discordapp.com/guilds/${discordSdk.guildId}/users/${user.id}/avatars/${guildsMembersRead.avatar}.png?size=256`;
+    } else if (user.avatar) {
+      guildAvatarSrc = `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png?size=256`;
+    } else {
+      const defaultAvatarIndex = (BigInt(user.id) >> 22n) % 6n;
+      guildAvatarSrc = `https://cdn.discordapp.com/embed/avatars/${defaultAvatarIndex}.png`;
+    }
+
+    const guildNickname = guildsMembersRead?.nick ?? (user.global_name ?? `${user.username}#${user.discriminator}`);
+  });
+```
+
+<Tip>
+A common pattern is to retrieve and cache guild-specific avatar and nickname data on your application's server, then serve all participant data from there. This avoids making per-user API calls from the client.
+</Tip>
+
+---
+
+## Preventing Unwanted Activity Sessions
+
+Your Activity's website is publicly accessible at `<application_id>.discordsays.com`. When loaded outside of Discord, the Discord RPC server is not present and the Activity will likely fail. However, a malicious client could theoretically mock the RPC protocol.
+
+### Using the Activity Instance API
+
+To validate that a client is genuinely inside an active Activity instance, use the `get_activity_instance` API:
+
+```
+GET https://discord.com/api/applications/<application_id>/activity-instances/<instance_id>
+Authorization: Bot <bot_token>
+```
+
+This route returns the serialized activity instance if found, or a `404` if the instance does not exist:
+
+```javascript
+// 404 — instance not found
+{"message": "404: Not Found", "code": 0}
+
+// 200 — active instance found
+{
+  "application_id": "1215413995645968394",
+  "instance_id": "i-1276580072400224306-gc-912952092627435520-912954213460484116",
+  "launch_id": "1276580072400224306",
+  "location": {
+    "id": "gc-912952092627435520-912954213460484116",
+    "kind": "gc",
+    "channel_id": "912954213460484116",
+    "guild_id": "912952092627435520"
+  },
+  "users": ["205519959982473217"]
+}
+```
+
+Your backend can use this to verify a client is in a valid instance before allowing participation in gameplay. The approach is flexible — you might gate specific features, or decline to serve the Activity HTML entirely for unverified sessions.
+
+### Validating Proxy Request Headers
+
+For additional security, Discord provides optional proxy authentication. When your embedded app makes requests through the Discord proxy, each request can include cryptographic headers proving the request's authenticity:
+
+- `X-Signature-Ed25519` — a cryptographic signature
+- `X-Signature-Timestamp` — a Unix timestamp
+- `X-Discord-Proxy-Payload` — a base64-encoded payload with user context
+
+<Accordion title="Validating Proxy Headers" icon="code">
+
+**JavaScript**
+
+```javascript
+const nacl = require("tweetnacl");
+
+const PUBLIC_KEY = "APPLICATION_PUBLIC_KEY";
+
+const signature = req.get("X-Signature-Ed25519");
+const timestamp = req.get("X-Signature-Timestamp");
+const payload = req.get("X-Discord-Proxy-Payload");
+
+const payloadBytes = Buffer.from(payload, "base64");
+const payloadString = payloadBytes.toString("utf-8");
+const payloadData = JSON.parse(payloadString);
+
+if (payloadData.created_at.toString() !== timestamp) {
+    return res.status(401).end("invalid request timestamp");
+}
+
+if (payloadData.expires_at < Math.floor(Date.now() / 1000)) {
+    return res.status(401).end("expired proxy token");
+}
+
+const isVerified = nacl.sign.detached.verify(
+    payloadBytes,
+    Buffer.from(signature, "base64"),
+    Buffer.from(PUBLIC_KEY, "hex")
+);
+
+if (!isVerified) {
+    return res.status(401).end("invalid request signature");
+}
+```
+
+**Python**
+
+```python
+import json
+import base64
+import time
+from nacl.signing import VerifyKey
+from nacl.exceptions import BadSignatureError
+
+PUBLIC_KEY = 'APPLICATION_PUBLIC_KEY'
+verify_key = VerifyKey(bytes.fromhex(PUBLIC_KEY))
+
+signature = request.headers["X-Signature-Ed25519"]
+timestamp = request.headers["X-Signature-Timestamp"]
+payload = request.headers["X-Discord-Proxy-Payload"]
+
+payload_bytes = base64.b64decode(payload)
+payload_string = payload_bytes.decode('utf-8')
+payload_data = json.loads(payload_string)
+
+if str(payload_data['created_at']) != timestamp:
+    abort(401, 'invalid request timestamp')
+
+if payload_data['expires_at'] < int(time.time()):
+    abort(401, 'expired proxy token')
+
+try:
+    verify_key.verify(payload_bytes, bytes.fromhex(signature))
+except BadSignatureError:
+    abort(401, 'invalid request signature')
+```
+
+</Accordion>
+
+Proxy authentication is entirely optional and provided as an additional security layer for apps that choose to implement it.

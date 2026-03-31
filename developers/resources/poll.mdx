@@ -1,0 +1,176 @@
+---
+title: Poll
+description: Reference for Discord poll objects and endpoints for creating polls and retrieving voter data.
+---
+
+A poll allows users to vote on a question with up to 10 answers. Polls are attached to messages and expire after a set duration.
+
+## Poll object
+
+The poll object contains nested structures designed to support future extensibility.
+
+### Poll object structure
+
+<ResponseField name="question" type="Poll Media Object" required>
+  The question of the poll. Only `text` is supported for the question.
+</ResponseField>
+
+<ResponseField name="answers" type="array of Poll Answer Objects" required>
+  Each of the answers available in the poll.
+</ResponseField>
+
+<ResponseField name="expiry" type="?ISO8601 timestamp" required>
+  The time when the poll ends. Marked as nullable to support non-expiring polls in the future, but all polls currently have an expiry.
+</ResponseField>
+
+<ResponseField name="allow_multiselect" type="boolean" required>
+  Whether a user can select multiple answers.
+</ResponseField>
+
+<ResponseField name="layout_type" type="integer" required>
+  The [layout type](#layout-type) of the poll.
+</ResponseField>
+
+<ResponseField name="results" type="Poll Results Object">
+  The results of the poll. May be absent in certain responses where results are not fetched. Treat absence as "unknown results", not "no results". Optional field.
+</ResponseField>
+
+---
+
+## Poll create request object
+
+Used when creating a poll. Similar to the poll object, but uses `duration` instead of `expiry`.
+
+### Poll create request structure
+
+<ParamField body="question" type="Poll Media Object" required>
+  The question of the poll. Only `text` is supported.
+</ParamField>
+
+<ParamField body="answers" type="array of Poll Answer Objects" required>
+  Each of the answers available in the poll. Up to 10 answers.
+</ParamField>
+
+<ParamField body="duration" type="integer">
+  Number of hours the poll should be open for, up to 32 days. Defaults to `24`.
+</ParamField>
+
+<ParamField body="allow_multiselect" type="boolean">
+  Whether a user can select multiple answers. Defaults to `false`.
+</ParamField>
+
+<ParamField body="layout_type" type="integer">
+  The [layout type](#layout-type) of the poll. Defaults to `DEFAULT` (`1`).
+</ParamField>
+
+---
+
+## Layout type
+
+| Type    | ID | Description             |
+|---------|----|-------------------------|
+| DEFAULT | 1  | The default layout type |
+
+---
+
+## Poll media object
+
+A common object that backs both the poll question and answers. Allows extensible display options in the future.
+
+<ResponseField name="text" type="string">
+  The text of the field. Always non-null for questions and answers in practice. Maximum 300 characters for questions, 55 for answers.
+</ResponseField>
+
+<ResponseField name="emoji" type="partial emoji object">
+  The emoji of the field. Optional; only applicable to answers (not the question). When creating an answer with an emoji, send either `id` (custom emoji) or `name` (standard emoji) as the only field.
+</ResponseField>
+
+---
+
+## Poll answer object
+
+The `answer_id` labels each answer. It currently starts at `1` for the first answer and increments sequentially, though you should not depend on this behavior. There is a maximum of 10 answers per poll.
+
+<ResponseField name="answer_id" type="integer">
+  The ID of the answer. Only sent as part of responses from the API or Gateway.
+</ResponseField>
+
+<ResponseField name="poll_media" type="Poll Media Object" required>
+  The data of the answer.
+</ResponseField>
+
+---
+
+## Poll results object
+
+Contains the number of votes for each answer.
+
+<Note>
+While a poll is in progress, results may not be perfectly accurate due to the intricacies of counting at scale. After a poll ends, a background job performs a final accurate tally. Results are finalized when `is_finalized` is `true`.
+</Note>
+
+<ResponseField name="is_finalized" type="boolean" required>
+  Whether the votes have been precisely counted.
+</ResponseField>
+
+<ResponseField name="answer_counts" type="array of Poll Answer Count Objects" required>
+  The counts for each answer. If an answer has no votes, it will not appear in this list.
+</ResponseField>
+
+### Poll answer count object structure
+
+<ResponseField name="id" type="integer" required>
+  The `answer_id` this count corresponds to.
+</ResponseField>
+
+<ResponseField name="count" type="integer" required>
+  The number of votes for this answer.
+</ResponseField>
+
+<ResponseField name="me_voted" type="boolean" required>
+  Whether the current user voted for this answer.
+</ResponseField>
+
+---
+
+## Poll endpoints
+
+To create a poll, see [Create Message](/developers/resources/message). After creation, the poll message cannot be edited.
+
+<Note>
+Apps are not allowed to vote on polls.
+</Note>
+
+## Get answer voters
+
+<Info>
+`GET /channels/{channel.id}/polls/{message.id}/answers/{answer_id}`
+</Info>
+
+Get a list of users that voted for this specific answer.
+
+### Query string params
+
+<ParamField query="after" type="snowflake">
+  Get users after this user ID.
+</ParamField>
+
+<ParamField query="limit" type="integer" default="25">
+  Max number of users to return (1–100).
+</ParamField>
+
+### Response body
+
+<ResponseField name="users" type="array of user objects" required>
+  Users who voted for this answer.
+</ResponseField>
+
+## End poll
+
+<Info>
+`POST /channels/{channel.id}/polls/{message.id}/expire`
+</Info>
+
+Immediately ends the poll. You cannot end polls created by other users.
+
+Returns a [message](/developers/resources/message) object. Fires a `Message Update` gateway event.

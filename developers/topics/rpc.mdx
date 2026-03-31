@@ -1,0 +1,797 @@
+---
+title: RPC
+description: Reference for Discord's local RPC server, which allows controlling the Discord client from localhost via WebSocket or HTTP.
+---
+
+<Warning>
+RPC is currently in a **private beta**. Discord is not accepting new developers into the program at this time.
+</Warning>
+
+All Discord clients have an RPC server running on localhost that allows control over local Discord clients. The RPC server supports both WebSocket connections and HTTP proxy requests to the Discord API.
+
+### RPC Versions
+
+| Version | Out of Service |
+|---------|----------------|
+| 1       | no             |
+
+---
+
+## Restrictions
+
+Access to the RPC server is limited while developing. You may invite up to **50 approved testers** while your app is unapproved. Unapproved apps are limited to creating 10 guilds and 10 channels. After approval, these limits are raised to virtually unlimited.
+
+---
+
+## Payloads
+
+All RPC payloads share a common structure:
+
+| Field | Type   | Description                                                                | Present                                                   |
+|-------|--------|----------------------------------------------------------------------------|-----------------------------------------------------------|
+| cmd   | enum   | [RPC command](/developers/topics/rpc#commands-and-events)                  | Always                                                    |
+| nonce | string | Unique string used once for replies from the server                        | In responses to commands (not subscribed events)          |
+| evt   | enum   | [Subscription event](/developers/topics/rpc#commands-and-events)           | In subscribed events, errors, and (un)subscribing events  |
+| data  | object | Event data                                                                 | In responses from the server                              |
+| args  | object | Command arguments                                                          | In commands sent to the server                            |
+
+---
+
+## Connecting
+
+The local RPC server runs on `127.0.0.1`. WebSocket connections use:
+
+```
+ws://127.0.0.1:PORT/?v=VERSION&client_id=CLIENT_ID&encoding=ENCODING
+```
+
+- `CLIENT_ID` — the client ID of your application
+- `VERSION` — the RPC server version (currently `1`)
+- `PORT` — the RPC server port (see below)
+- `ENCODING` — `json` or `etf`
+
+### RPC Server Ports
+
+The RPC server picks a port from the range **6463–6472** sequentially. Your client should iterate over these ports until a successful connection is made. Track the successful port for the rest of the session.
+
+<Note>
+The RPC server verifies the `Origin` header on WebSocket connection to prevent client ID spoofing. You will be instantly disconnected if the origin does not match your registered origins. Set your RPC Origin in the [Developer Portal](https://discord.com/developers/applications).
+</Note>
+
+<Info>
+For non-browser apps (like games), ensure the origin is sent with the WebSocket upgrade request. Use `https://localhost` for local testing or your company/game's domain for production.
+</Info>
+
+---
+
+## Authenticating
+
+All RPC commands require authentication. Unauthenticated calls return a `4006` error. The two-step authentication process uses `AUTHORIZE` followed by `AUTHENTICATE`.
+
+### Step 1: AUTHORIZE
+
+Send an `AUTHORIZE` command to prompt the user to grant your app access. The response returns a `code` that can be exchanged for an access token.
+
+```json
+{
+  "nonce": "f48f6176-4afb-4c03-b1b8-d960861f5216",
+  "args": {
+    "client_id": "192741864418312192",
+    "scopes": ["rpc", "identify"]
+  },
+  "cmd": "AUTHORIZE"
+}
+```
+
+Response:
+
+```json
+{
+  "cmd": "AUTHORIZE",
+  "data": {
+    "code": "O62Q9JzFe8BEOUzIfsAndOjNd2V4sJ"
+  },
+  "nonce": "f48f6176-4afb-4c03-b1b8-d960861f5216"
+}
+```
+
+Exchange the `code` with a POST to `https://discord.com/api/oauth2/token` using the standard OAuth2 token exchange parameters.
+
+**Authorize Argument Structure**
+
+| Field     | Type             | Description                                                               |
+|-----------|------------------|---------------------------------------------------------------------------|
+| scopes    | array of strings | [OAuth2 scopes](/developers/topics/oauth2#shared-resources-oauth2-scopes) to authorize |
+| client_id | string           | OAuth2 application ID                                                     |
+| rpc_token | string           | One-time use RPC token (for approved apps/testers)                        |
+| username  | string           | Username to create a guest account with if the user does not have Discord |
+
+### Step 2: AUTHENTICATE
+
+Exchange the OAuth2 access token for an authenticated RPC session:
+
+```json
+{
+  "nonce": "5bb10a43-1fdc-4391-9512-0c8f4aa203d4",
+  "args": {
+    "access_token": "CZhtkLDpNYXgPH9Ml6shqh2OwykChw"
+  },
+  "cmd": "AUTHENTICATE"
+}
+```
+
+Response:
+
+```json
+{
+  "cmd": "AUTHENTICATE",
+  "data": {
+    "application": {
+      "description": "test app description",
+      "icon": "d6b51c21c48482d5b64aa4832d92fe14",
+      "id": "192741864418312192",
+      "rpc_origins": ["http://localhost:3344"],
+      "name": "test app"
+    },
+    "expires": "2017-06-29T19:09:52.361000+00:00",
+    "user": {
+      "username": "test user",
+      "discriminator": "7479",
+      "id": "190320984123768832",
+      "avatar": "b004ec1740a63ca06ae2e14c5cee11f3"
+    },
+    "scopes": ["rpc", "identify"]
+  },
+  "nonce": "5bb10a43-1fdc-4391-9512-0c8f4aa203d4"
+}
+```
+
+**Authenticate Response Structure**
+
+| Field       | Type   | Description                      |
+|-------------|--------|----------------------------------|
+| user        | object | The authenticated user (partial) |
+| scopes      | array  | Authorized OAuth2 scopes         |
+| expires     | date   | Expiration date of OAuth2 token  |
+| application | object | The application the user authorized |
+
+---
+
+## Commands and Events
+
+### RPC Commands
+
+| Name                       | Description                                                     |
+|----------------------------|-----------------------------------------------------------------|
+| `DISPATCH`                 | Event dispatch                                                  |
+| `AUTHORIZE`                | Authorize a new client with your app                            |
+| `AUTHENTICATE`             | Authenticate an existing client with your app                   |
+| `GET_GUILD`                | Retrieve guild information from the client                      |
+| `GET_GUILDS`               | Retrieve a list of guilds from the client                       |
+| `GET_CHANNEL`              | Retrieve channel information from the client                    |
+| `GET_CHANNELS`             | Retrieve a list of channels for a guild from the client         |
+| `SUBSCRIBE`                | Subscribe to an RPC event                                       |
+| `UNSUBSCRIBE`              | Unsubscribe from an RPC event                                   |
+| `SET_USER_VOICE_SETTINGS`  | Change voice settings of users in voice channels                |
+| `SELECT_VOICE_CHANNEL`     | Join or leave a voice channel, group DM, or DM                  |
+| `GET_SELECTED_VOICE_CHANNEL` | Get the current voice channel the client is in               |
+| `SELECT_TEXT_CHANNEL`      | Join or leave a text channel, group DM, or DM                   |
+| `GET_VOICE_SETTINGS`       | Retrieve the client's voice settings                            |
+| `SET_VOICE_SETTINGS`       | Set the client's voice settings                                 |
+| `SET_CERTIFIED_DEVICES`    | Send info about certified hardware devices                      |
+| `SET_ACTIVITY`             | Update a user's Rich Presence                                   |
+| `SEND_ACTIVITY_JOIN_INVITE` | Consent to a Rich Presence Ask to Join request                 |
+| `CLOSE_ACTIVITY_REQUEST`   | Reject a Rich Presence Ask to Join request                      |
+
+### RPC Events
+
+| Name                    | Description                                                                                |
+|-------------------------|--------------------------------------------------------------------------------------------|
+| `READY`                 | Non-subscription event sent immediately after connecting, contains server information      |
+| `ERROR`                 | Non-subscription event sent when there is an error, including command responses            |
+| `GUILD_STATUS`          | Sent when a subscribed server's state changes                                              |
+| `GUILD_CREATE`          | Sent when a guild is created/joined on the client                                          |
+| `CHANNEL_CREATE`        | Sent when a channel is created/joined on the client                                        |
+| `VOICE_CHANNEL_SELECT`  | Sent when the client joins a voice channel                                                 |
+| `VOICE_STATE_CREATE`    | Sent when a user joins a subscribed voice channel                                          |
+| `VOICE_STATE_UPDATE`    | Sent when a user's voice state changes in a subscribed voice channel (mute, volume, etc.)  |
+| `VOICE_STATE_DELETE`    | Sent when a user parts a subscribed voice channel                                          |
+| `VOICE_SETTINGS_UPDATE` | Sent when the client's voice settings update                                               |
+| `VOICE_CONNECTION_STATUS` | Sent when the client's voice connection status changes                                   |
+| `SPEAKING_START`        | Sent when a user in a subscribed voice channel speaks                                      |
+| `SPEAKING_STOP`         | Sent when a user in a subscribed voice channel stops speaking                              |
+| `MESSAGE_CREATE`        | Sent when a message is created in a subscribed text channel                                |
+| `MESSAGE_UPDATE`        | Sent when a message is updated in a subscribed text channel                                |
+| `MESSAGE_DELETE`        | Sent when a message is deleted in a subscribed text channel                                |
+| `NOTIFICATION_CREATE`   | Sent when the client receives a notification (mention or new message in eligible channels) |
+| `ACTIVITY_JOIN`         | Sent when the user clicks a Rich Presence join invite in chat to join a game               |
+| `ACTIVITY_SPECTATE`     | Sent when the user clicks a Rich Presence spectate invite in chat to spectate a game       |
+| `ACTIVITY_JOIN_REQUEST` | Sent when the user receives a Rich Presence Ask to Join request                            |
+
+---
+
+## Command Reference
+
+<Accordion title="GET_GUILDS">
+
+Used to get a list of guilds the client is in.
+
+**Request**
+
+```json
+{
+  "nonce": "e16fcbed-8bfa-4fd4-ba09-73b72e809833",
+  "args": {},
+  "cmd": "GET_GUILDS"
+}
+```
+
+**Response**
+
+```json
+{
+  "cmd": "GET_GUILDS",
+  "data": {
+    "guilds": [
+      {
+        "id": "199737254929760256",
+        "name": "test"
+      }
+    ]
+  },
+  "nonce": "e16fcbed-8bfa-4fd4-ba09-73b72e809833"
+}
+```
+
+</Accordion>
+
+<Accordion title="GET_GUILD">
+
+Used to get a specific guild the client is in.
+
+**Argument Structure**
+
+| Field    | Type    | Description                                                  |
+|----------|---------|--------------------------------------------------------------|
+| guild_id | string  | ID of the guild to get                                       |
+| timeout  | integer | Asynchronously get guild with time to wait before timing out |
+
+**Response Structure**
+
+| Field    | Type             | Description                                                   |
+|----------|------------------|---------------------------------------------------------------|
+| id       | string           | Guild ID                                                      |
+| name     | string           | Guild name                                                    |
+| icon_url | string           | Guild icon URL                                                |
+| members  | array of objects | Guild members (deprecated; always returns an empty array)     |
+
+**Example**
+
+```json
+{
+  "nonce": "9524922c-3d32-413a-bdaa-0804f4332588",
+  "args": { "guild_id": "199737254929760256" },
+  "cmd": "GET_GUILD"
+}
+```
+
+</Accordion>
+
+<Accordion title="GET_CHANNEL">
+
+Used to get a specific channel the client is in.
+
+**Argument Structure**
+
+| Field      | Type   | Description               |
+|------------|--------|---------------------------|
+| channel_id | string | ID of the channel to get  |
+
+**Response Structure**
+
+| Field        | Type             | Description                                                      |
+|--------------|------------------|------------------------------------------------------------------|
+| id           | string           | Channel ID                                                       |
+| guild_id     | string           | Channel's guild ID                                               |
+| name         | string           | Channel name                                                     |
+| type         | integer          | Channel type (guild text: 0, guild voice: 2, dm: 1, group dm: 3) |
+| topic        | string           | (text) Channel topic                                             |
+| bitrate      | integer          | (voice) Bitrate of voice channel                                 |
+| user_limit   | integer          | (voice) User limit of voice channel (0 for none)                 |
+| position     | integer          | Position of channel in channel list                              |
+| voice_states | array of objects | (voice) Channel's voice states                                   |
+| messages     | array of objects | (text) Channel's messages                                        |
+
+</Accordion>
+
+<Accordion title="GET_CHANNELS">
+
+Used to get a guild's channels.
+
+**Argument Structure**
+
+| Field    | Type   | Description                          |
+|----------|--------|--------------------------------------|
+| guild_id | string | ID of the guild to get channels for  |
+
+**Example**
+
+```json
+{
+  "nonce": "0dee7bd4-8f62-4ecc-9e0f-1b1839a4fa93",
+  "args": { "guild_id": "199737254929760256" },
+  "cmd": "GET_CHANNELS"
+}
+```
+
+</Accordion>
+
+<Accordion title="SET_USER_VOICE_SETTINGS">
+
+Used to change voice settings of a specific user in a voice channel.
+
+<Info>
+Only one app may modify voice settings at a time. When an app changes voice settings, it locks them so other apps lose the ability to change them. Settings reset when the controlling app disconnects.
+</Info>
+
+**Argument and Response Structure**
+
+| Field   | Type    | Description                                              |
+|---------|---------|----------------------------------------------------------|
+| user_id | string  | User ID                                                  |
+| pan?    | object  | Pan settings `{ left: float, right: float }` (0.0–1.0)  |
+| volume? | integer | Volume (defaults to 100, min 0, max 200)                 |
+| mute?   | boolean | Mute state                                               |
+
+**Example**
+
+```json
+{
+  "nonce": "eafc8152-2248-4478-9827-8457b7900cb4",
+  "args": {
+    "user_id": "192731515703001088",
+    "pan": { "left": 1.0, "right": 1.0 },
+    "volume": 120,
+    "mute": false
+  },
+  "cmd": "SET_USER_VOICE_SETTINGS"
+}
+```
+
+</Accordion>
+
+<Accordion title="SELECT_VOICE_CHANNEL">
+
+Used to join or leave a voice channel, group DM, or DM. Returns the Get Channel response, or `null` if leaving.
+
+**Argument Structure**
+
+| Field      | Type    | Description                                                     |
+|------------|---------|-----------------------------------------------------------------|
+| channel_id | string  | Channel ID to join (or `null` to leave)                         |
+| timeout    | integer | Asynchronously join channel with time to wait before timing out |
+| force      | boolean | Force move a user to a voice channel                            |
+| navigate   | boolean | Navigate to the channel in the client after joining             |
+
+<Warning>
+You will receive a `5003` error if the user is already in a voice channel. The `force` parameter should only be used after the user has explicitly approved being moved by your app.
+</Warning>
+
+</Accordion>
+
+<Accordion title="SELECT_TEXT_CHANNEL">
+
+Used to join or leave a text channel, group DM, or DM. Returns the Get Channel response, or `null` if leaving.
+
+**Argument Structure**
+
+| Field      | Type    | Description                                                     |
+|------------|---------|-----------------------------------------------------------------|
+| channel_id | string  | Channel ID to join (or `null` to leave)                         |
+| timeout    | integer | Asynchronously join channel with time to wait before timing out |
+
+</Accordion>
+
+<Accordion title="GET_VOICE_SETTINGS / SET_VOICE_SETTINGS">
+
+`GET_VOICE_SETTINGS` retrieves the current voice settings. `SET_VOICE_SETTINGS` updates them — all fields are optional and only passed fields are updated.
+
+<Info>
+Only one app may modify voice settings at a time (same restriction as `SET_USER_VOICE_SETTINGS`).
+</Info>
+
+**Voice Settings Structure**
+
+| Field                  | Type    | Description                       |
+|------------------------|---------|-----------------------------------|
+| input                  | object  | Input device settings             |
+| output                 | object  | Output device settings            |
+| mode                   | object  | Voice mode settings               |
+| automatic_gain_control | boolean | State of automatic gain control   |
+| echo_cancellation      | boolean | State of echo cancellation        |
+| noise_suppression      | boolean | State of noise suppression        |
+| qos                    | boolean | State of voice quality of service |
+| silence_warning        | boolean | State of silence warning notice   |
+| deaf                   | boolean | State of self-deafen              |
+| mute                   | boolean | State of self-mute                |
+
+**Voice Settings Input/Output Object**
+
+| Field             | Type             | Description                                                                |
+|-------------------|------------------|----------------------------------------------------------------------------|
+| device_id         | string           | Device ID                                                                  |
+| volume            | float            | Input voice level (0–100) / Output voice level (0–200)                     |
+| available_devices | array of objects | Read-only device objects with `id` and `name` string keys                  |
+
+**Voice Settings Mode Object**
+
+| Field          | Type    | Description                                                          |
+|----------------|---------|----------------------------------------------------------------------|
+| type           | string  | Voice mode: `PUSH_TO_TALK` or `VOICE_ACTIVITY`                       |
+| auto_threshold | boolean | Whether voice activity threshold sets itself automatically           |
+| threshold      | float   | Threshold for voice activity in dB (min: -100, max: 0)               |
+| shortcut       | object  | Push-to-talk shortcut key combo                                      |
+| delay          | float   | PTT release delay in ms (min: 0, max: 2000)                          |
+
+**Key Types**
+
+| Type                  | ID |
+|-----------------------|----|
+| KEYBOARD_KEY          | 0  |
+| MOUSE_BUTTON          | 1  |
+| KEYBOARD_MODIFIER_KEY | 2  |
+| GAMEPAD_BUTTON        | 3  |
+
+**Example: Set Voice Settings**
+
+```json
+{
+  "nonce": "3d64ed55-ef6e-4bd5-99c9-677533babc22",
+  "args": {
+    "input": { "volume": 90.5 }
+  },
+  "cmd": "SET_VOICE_SETTINGS"
+}
+```
+
+</Accordion>
+
+<Accordion title="SUBSCRIBE / UNSUBSCRIBE">
+
+Used to subscribe or unsubscribe from RPC events. Set `evt` to the event name and `args` to the arguments required by that event.
+
+**Subscribe Example**
+
+```json
+{
+  "nonce": "be9a6de3-31d0-4767-a8e9-4818c5690015",
+  "args": { "guild_id": "199737254929760256" },
+  "evt": "GUILD_STATUS",
+  "cmd": "SUBSCRIBE"
+}
+```
+
+**Unsubscribe Example**
+
+```json
+{
+  "nonce": "647d814a-4cf8-4fbb-948f-898aad24f55b",
+  "args": { "guild_id": "199737254929760256" },
+  "evt": "GUILD_STATUS",
+  "cmd": "UNSUBSCRIBE"
+}
+```
+
+</Accordion>
+
+<Accordion title="SET_CERTIFIED_DEVICES">
+
+Used by hardware manufacturers to send information about connected certified devices. See [Certified Devices](/developers/topics/certified-devices) for the full integration guide.
+
+**Argument Structure**
+
+| Field   | Type             | Description                                                   |
+|---------|------------------|---------------------------------------------------------------|
+| devices | array of objects | A list of devices for your manufacturer, in order of priority |
+
+**Example**
+
+```json
+{
+  "nonce": "9b4e9711-97f3-4f35-b047-32c82a51978e",
+  "cmd": "SET_CERTIFIED_DEVICES",
+  "args": {
+    "devices": [
+      {
+        "type": "audioinput",
+        "id": "aafc2003-da0e-42a3-b982-6a17a2812510",
+        "vendor": {
+          "name": "SteelSeries",
+          "url": "https://steelseries.com"
+        },
+        "model": {
+          "name": "Arctis 7",
+          "url": "https://steelseries.com/gaming-headsets/arctis-7"
+        },
+        "related": ["aafc2003-da0e-42a3-b982-6a17a2819999"],
+        "echo_cancellation": true,
+        "noise_suppression": true,
+        "automatic_gain_control": true,
+        "hardware_mute": false
+      }
+    ]
+  }
+}
+```
+
+</Accordion>
+
+<Accordion title="SET_ACTIVITY">
+
+Used to update a user's Rich Presence.
+
+<Info>
+When using `SET_ACTIVITY`, the `activity` object is limited to a `type` of Playing (`0`), Listening (`2`), Watching (`3`), or Competing (`5`).
+</Info>
+
+**Argument Structure**
+
+| Field    | Type    | Description                             |
+|----------|---------|-----------------------------------------|
+| pid      | integer | The application's process ID            |
+| activity | object  | The Rich Presence to assign to the user |
+
+</Accordion>
+
+<Accordion title="SEND_ACTIVITY_JOIN_INVITE / CLOSE_ACTIVITY_REQUEST">
+
+Used to accept or reject a Rich Presence Ask to Join request.
+
+**Argument Structure** (both commands)
+
+| Field   | Type      | Description                    |
+|---------|-----------|--------------------------------|
+| user_id | snowflake | The ID of the requesting user  |
+
+**Example: Accept join request**
+
+```json
+{
+  "nonce": "5dc0c062-98c6-47a0-8922-15aerg126",
+  "cmd": "SEND_ACTIVITY_JOIN_INVITE",
+  "args": { "user_id": "53908232506183680" }
+}
+```
+
+</Accordion>
+
+---
+
+## Event Reference
+
+<Accordion title="READY">
+
+Sent immediately after connecting. Contains the RPC version, server configuration, and the current user.
+
+```json
+{
+  "cmd": "DISPATCH",
+  "data": {
+    "v": 1,
+    "config": {
+      "cdn_host": "cdn.discordapp.com",
+      "api_endpoint": "//discord.com/api",
+      "environment": "production"
+    },
+    "user": {
+      "id": "53908232506183680",
+      "username": "Mason",
+      "discriminator": "1337",
+      "avatar": null
+    }
+  },
+  "evt": "READY"
+}
+```
+
+</Accordion>
+
+<Accordion title="ERROR">
+
+Sent when an error occurs, including failed command responses.
+
+```json
+{
+  "cmd": "AUTHORIZE",
+  "data": {
+    "code": 4007,
+    "message": "No client id provided"
+  },
+  "evt": "ERROR",
+  "nonce": "5102b6f0-c769-4f37-8cca-25fb0ab22628"
+}
+```
+
+See [RPC Error Codes](/developers/topics/opcodes-and-status-codes#rpc-rpc-error-codes) for the full list.
+
+</Accordion>
+
+<Accordion title="GUILD_STATUS">
+
+Sent when a subscribed server's state changes. Requires subscribing with a `guild_id` argument.
+
+```json
+{
+  "cmd": "DISPATCH",
+  "data": {
+    "guild": {
+      "id": "199737254929760256",
+      "name": "test",
+      "icon_url": null
+    },
+    "online": 0
+  },
+  "evt": "GUILD_STATUS"
+}
+```
+
+</Accordion>
+
+<Accordion title="VOICE_STATE_CREATE / VOICE_STATE_UPDATE / VOICE_STATE_DELETE">
+
+Dispatched when a user joins, changes state in, or leaves a subscribed voice channel. Requires subscribing with a `channel_id` argument.
+
+```json
+{
+  "cmd": "DISPATCH",
+  "evt": "VOICE_STATE_CREATE",
+  "data": {
+    "voice_state": {
+      "mute": false,
+      "deaf": false,
+      "self_mute": false,
+      "self_deaf": false,
+      "suppress": false
+    },
+    "user": {
+      "id": "190320984123768832",
+      "username": "test 2",
+      "discriminator": "7479",
+      "avatar": "b004ec1740a63ca06ae2e14c5cee11f3",
+      "bot": false
+    },
+    "nick": "test user 2",
+    "volume": 110,
+    "mute": false,
+    "pan": { "left": 1.0, "right": 1.0 }
+  }
+}
+```
+
+</Accordion>
+
+<Accordion title="VOICE_CONNECTION_STATUS">
+
+Sent when the client's voice connection status changes.
+
+**Dispatch Data Structure**
+
+| Field        | Type              | Description                                    |
+|--------------|-------------------|------------------------------------------------|
+| state        | string            | One of the voice connection states listed below |
+| hostname     | string            | Hostname of the connected voice server         |
+| pings        | array of integers | Last 20 pings (in ms)                          |
+| average_ping | integer           | Average ping (in ms)                           |
+| last_ping    | integer           | Last ping (in ms)                              |
+
+**Voice Connection States**
+
+| State                | Description                       |
+|----------------------|-----------------------------------|
+| `DISCONNECTED`       | TCP disconnected                  |
+| `AWAITING_ENDPOINT`  | Waiting for voice endpoint        |
+| `AUTHENTICATING`     | TCP authenticating                |
+| `CONNECTING`         | TCP connecting                    |
+| `CONNECTED`          | TCP connected                     |
+| `VOICE_DISCONNECTED` | TCP connected, Voice disconnected |
+| `VOICE_CONNECTING`   | TCP connected, Voice connecting   |
+| `VOICE_CONNECTED`    | TCP connected, Voice connected    |
+| `NO_ROUTE`           | No route to host                  |
+| `ICE_CHECKING`       | WebRTC ICE checking               |
+
+```json
+{
+  "cmd": "DISPATCH",
+  "evt": "VOICE_CONNECTION_STATUS",
+  "data": {
+    "state": "VOICE_CONNECTED",
+    "hostname": "some-server.discord.gg",
+    "pings": [20, 13.37],
+    "average_ping": 13.37,
+    "last_ping": 20
+  }
+}
+```
+
+</Accordion>
+
+<Accordion title="SPEAKING_START / SPEAKING_STOP">
+
+Sent when a user in a subscribed voice channel starts or stops speaking. Requires subscribing with a `channel_id` argument.
+
+```json
+{
+  "cmd": "DISPATCH",
+  "data": { "user_id": "190320984123768832" },
+  "evt": "SPEAKING_STOP"
+}
+```
+
+</Accordion>
+
+<Accordion title="MESSAGE_CREATE / MESSAGE_UPDATE / MESSAGE_DELETE">
+
+Dispatched for message events in subscribed text channels. Deletions only include the message ID. Requires subscribing with a `channel_id` argument.
+
+```json
+{
+  "cmd": "DISPATCH",
+  "data": {
+    "channel_id": "199737254929760256",
+    "message": {
+      "id": "199743874640379904",
+      "content": "test",
+      "timestamp": "2016-07-05T04:30:50.776Z",
+      "author": {
+        "id": "190320984123768832",
+        "username": "test user 2",
+        "discriminator": "7479",
+        "avatar": "b004ec1740a63ca06ae2e14c5cee11f3",
+        "bot": false
+      }
+    }
+  },
+  "evt": "MESSAGE_CREATE"
+}
+```
+
+</Accordion>
+
+<Accordion title="NOTIFICATION_CREATE">
+
+Sent when the client receives a notification. Requires the `rpc.notifications.read` OAuth2 scope. No subscription arguments needed.
+
+| Field      | Type   | Description                               |
+|------------|--------|-------------------------------------------|
+| channel_id | string | ID of channel where notification occurred |
+| message    | object | Message that generated this notification  |
+| icon_url   | string | Icon URL of the notification              |
+| title      | string | Title of the notification                 |
+| body       | string | Body of the notification                  |
+
+</Accordion>
+
+<Accordion title="ACTIVITY_JOIN / ACTIVITY_SPECTATE / ACTIVITY_JOIN_REQUEST">
+
+Rich Presence activity events.
+
+- **`ACTIVITY_JOIN`** — sent when the user clicks a join invite. Contains `secret` (the `join_secret` from the activity).
+- **`ACTIVITY_SPECTATE`** — sent when the user clicks a spectate invite. Contains `secret` (the `spectate_secret` from the activity).
+- **`ACTIVITY_JOIN_REQUEST`** — sent when the user receives an Ask to Join request. Contains a partial `user` object.
+
+```json
+{
+  "cmd": "DISPATCH",
+  "data": {
+    "user": {
+      "id": "53908232506183680",
+      "username": "Mason",
+      "discriminator": "1337",
+      "avatar": "a_bab14f271d565501444b2ca3be944b25"
+    }
+  },
+  "evt": "ACTIVITY_JOIN_REQUEST"
+}
+```
+
+</Accordion>

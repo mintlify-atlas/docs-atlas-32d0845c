@@ -1,0 +1,96 @@
+---
+title: Networking in Activities
+description: Learn networking patterns and best practices for Discord Activities, including the Discord proxy, URL construction, and security considerations.
+---
+
+## Activity Proxy Considerations
+
+All network traffic from your Activity is routed through the Discord proxy for security reasons. Under the hood, Discord uses Cloudflare Workers, which introduces some restrictions:
+
+<Warning>
+**WebRTC is not supported** in Activities. WebTransport is also not yet available, though Discord is working with upstream providers to enable it.
+</Warning>
+
+---
+
+## Construct a Full URL
+
+In some cases you may need to reference the full URL of a resource instead of a relative path. Full Activity URLs follow this structure:
+
+```
+{protocol}://{clientId}.discordsays.com{resourcePath}
+```
+
+Here is how to build a full URL using the `URL` constructor:
+
+```javascript
+const protocol = `https`;
+const clientId = '<YOUR CLIENT ID>';
+const proxyDomain = 'discordsays.com';
+const resourcePath = '/foo/bar.jpg';
+const url = new URL(`${protocol}://${clientId}.${proxyDomain}${resourcePath}`);
+```
+
+For example, given a client ID of `12345678`:
+
+| Relative Path | Full Path |
+|--------------|-----------|
+| `/foo/bar.jpg` | `https://12345678.discordsays.com/foo/bar.jpg` |
+
+---
+
+## Using External Resources
+
+Activities are sandboxed through the Discord proxy. All external URLs must be configured as [URL mappings](/developers/activities/development-guides/local-development#url-mapping) in the developer portal.
+
+A common issue arises when third-party npm modules or other resources reference external URLs directly. For example, if an npm module attempts to call `https://foo.library.com`, the request will fail with a `blocked:csp` error.
+
+To work around this, you have several options:
+
+- **Fork the library** to use mapped URLs
+- **Use patch-package** to apply a post-install patch
+- **Use the `patchUrlMappings` API** from the Embedded App SDK
+
+The `patchUrlMappings` API is the recommended approach, as it provides a smooth path from development to production without modifying third-party code.
+
+### Using `patchUrlMappings`
+
+This function takes an array of mappings and transforms any external network requests to use the configured proxy paths. Here is an example:
+
+1. In the developer portal, create a URL mapping: `/foo` → `foo.com`
+2. In your code, call `patchUrlMappings` when initializing your app:
+
+```javascript
+import {patchUrlMappings} from '@discord/embedded-app-sdk';
+const isProd = process.env.NODE_ENV === 'production';
+
+async function setupApp() {
+  if (isProd) {
+    patchUrlMappings([{prefix: '/foo', target: 'foo.com'}]);
+  }
+  // Start app initialization after this...
+}
+```
+
+<Info>
+`patchUrlMappings` modifies the browser's global `fetch`, `WebSocket`, and `XMLHttpRequest.prototype.open`. Depending on the library you are patching, you may see side effects. Use it only when necessary.
+</Info>
+
+---
+
+## Security Considerations
+
+### Trusting Client Data
+
+Do not treat data coming from the Discord client as a source of truth. Data about the current user, their Nitro status, or their current channel could be falsified by a malicious client. If you need verified data, call the Discord API directly from your application's server using the OAuth2 access token obtained through the full authorization flow.
+
+Additionally, data from the Discord client is not sanitized. Usernames, channel names, and other fields are arbitrary user input. Always sanitize these strings before rendering them, or use `.textContent` instead of `.innerHTML`.
+
+### Using Cookies
+
+To set a cookie for use in network requests through the proxy, ensure the cookie's domain matches your app's full `{clientId}.discordsays.com` domain. You must also set `SameSite=None Partitioned` on the cookie:
+
+- `SameSite=None` is required because browsers refuse to store or send cookies with stricter settings for requests made from within an iframe.
+- `Partitioned` limits the cookie to Discord's iframes only.
+
+Other Activities cannot use your Activity's cookies due to the Content Security Policy (CSP) restricting requests to your own app's proxy.
